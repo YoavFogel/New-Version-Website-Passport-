@@ -98,3 +98,8 @@ The old site appears to have only `/` indexed. When the full URL list is availab
 1. **Other citizenships.** Internal material suggests the office also handles other citizenships (e.g., German). Should the new site be Romania-only, or have a top-level "אזרחויות נוספות" section? The recommendation is Romania-first at launch, with the structure leaving room for `/ezrachut-germanit` and others later.
 2. **URL language.** Transliterated slugs (recommended) vs. Hebrew-letter slugs vs. English.
 3. **Language versions.** Hebrew only at launch? Russian is a strong candidate for a second language, given the Bessarabia/Moldova audience.
+
+## 7. Update (2026-10-07, v2)
+The complete Hebrew copy now lives in [`master-content-he.md`](./master-content-he.md), which supersedes the drafts in `docs/content/`. Changes from this sitemap:
+- **FAQ page (`/shealot-nefotzot`) removed as a primary page.** It is replaced by an on-site Q&A assistant grounded in an approved knowledge base (chapter 16 of the master document).
+- **Testimonials page (`/mamlitzim`) removed.** It is replaced by a live Google reviews component (chapter 17). No written or invented testimonials.
