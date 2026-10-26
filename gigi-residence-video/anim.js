@@ -11,11 +11,11 @@ const SCALE = Number(new URLSearchParams(location.search).get('scale') || 2);
 const cv = document.getElementById('c');
 cv.width = W * SCALE; cv.height = H * SCALE;
 const ctx = cv.getContext('2d');
-const FONT = "Almoni, 'Noto Sans Hebrew'";   // licensed Almoni is used automatically when its files are present
+const FONT = "Almoni, Assistant";   // licensed Almoni is used automatically when its files are present
 
 // ---------------------------------------------------------------- palette
 const C = {
-  black: [8, 9, 14], ink: [14, 16, 26], royal: [38, 44, 168], royal2: [30, 34, 140], royalHi: [92, 108, 255],
+  black: [10, 14, 40], ink: [16, 22, 58], royal: [38, 44, 168], royal2: [30, 34, 140], royalHi: [92, 108, 255],
   white: [255, 255, 255], soft: [226, 230, 242], green: [86, 196, 132], greenD: [52, 150, 98], gold: [214, 182, 121],
   warm: [255, 200, 128], dusk: [20, 22, 58],
 };
@@ -93,16 +93,18 @@ function rollNumber(chars, cx, cy, t0, o = {}) {
   chars.forEach((c, i) => {
     const w = widths[i], ts = t0 + i * 0.06;
     ctx.save();
-    ctx.beginPath(); ctx.rect(x - 10, cy - size * 0.62, w + 20, size * 1.24); ctx.clip();
+    ctx.beginPath(); ctx.rect(x - 10, cy - size * 0.56, w + 20, size * 1.12); ctx.clip();
     if (/\d/.test(c)) {
       const d = +c, u = P(now, ts, ts + dur + i * 0.08), e = eo5(u);
       const pos = e * (spins * 10 + d);                 // total digits scrolled
       const vel = u < 1 ? (spins * 10 + d) * 5 * Math.pow(1 - u, 4) / (dur + i * 0.08) : 0;
-      const base = Math.floor(pos), f = pos - base;
+      const base = u >= 1 ? spins * 10 + d : Math.floor(pos), f = u >= 1 ? 0 : pos - base;
       const bl = Math.min(18, vel * 0.9);
       for (let k = -1; k <= 1; k++) {
+        if (u >= 1 && k !== 0) continue;
         const dig = ((base + k) % 10 + 10) % 10;
-        text(String(dig), x + w / 2, cy - (k - f) * size * 1.05, { size, weight, color, alpha: alpha * (u > 0 ? 1 : 0), blur: bl });
+        const dy = (k - f) * size * 1.05;
+        text(String(dig), x + w / 2, cy - dy, { size, weight, color, alpha: alpha * (u > 0 ? 1 : 0) * clamp(1 - Math.abs(dy) / (size * 0.62)), blur: bl });
       }
     } else {
       const u = eo(P(now, ts + 0.15, ts + 0.7));
@@ -130,6 +132,14 @@ function pill(str, x, y, o = {}) {
   text(str, rtl ? (w / 2 - pad - extra) : (-w / 2 + pad + extra), 1, { size, weight, color, align: rtl ? 'right' : 'left', rtl });
   ctx.restore();
   return w;
+}
+// deep navy field with a slow, soft royal glow (replaces flat black)
+function deepBG(x = 0, y = 0, w = W, h = H, tt = 0) {
+  ctx.fillStyle = rgb(C.black); ctx.fillRect(x, y, w, h);
+  const gx = W * (0.5 + 0.18 * Math.sin(tt * 0.21)), gy = H * (0.42 + 0.08 * Math.cos(tt * 0.17));
+  const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, W * 0.62);
+  g.addColorStop(0, 'rgba(52,62,190,0.38)'); g.addColorStop(0.55, 'rgba(36,44,150,0.12)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
 }
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
 function card(x, y, w, h, o = {}) {
@@ -366,7 +376,7 @@ function act1(t) {
   if (g && m < 1) { ctx.beginPath(); ctx.arc(W / 2, H / 2, g.R * lerp(1, 8, m), 0, 7); ctx.clip(); }
   drawCountries(g && m < 1 ? null : cam, proj, worldA, blue > 0.5
     ? { land: 'rgba(255,255,255,0.16)', ro: 'rgba(255,255,255,0.42)', il: 'rgba(255,255,255,0.42)', border: 'rgba(255,255,255,0.12)', roLine: 0 }
-    : { land: '#22263f', ro: rgb(mix([34, 38, 63], C.royal, roHi)), border: 'rgba(255,255,255,0.10)', roLine: eio(P(t, 2.4, 3.8)) * (1 - ss(P(t, 4.6, 5.2))) });
+    : { land: '#262d62', ro: rgb(mix([38, 45, 98], C.royal, roHi)), border: 'rgba(255,255,255,0.10)', roLine: eio(P(t, 2.4, 3.8)) * (1 - ss(P(t, 4.6, 5.2))) });
   ctx.restore();
   // ---- Bucharest + Corbeanca schematic
   const regA = ss(P(lz, Math.log(400), Math.log(1100))) * (1 - blue);
@@ -374,16 +384,35 @@ function act1(t) {
     drawRegion(cam, regA, t, { greenA: ss(P(t, 6.0, 7.4)), townA: ss(P(t, 7.0, 8.4)) });
     const fs = clamp(cam.z / 2150, 0.4, 1.2);
     const lab = eo5(P(t, 4.25, 4.9)) * (1 - ss(P(t, 9.9, 10.4)));
-    ctx.save(); ctx.beginPath(); ctx.rect(0, bu[1] - 70 * fs, W, 140 * fs); ctx.clip();
-    text('BUCHAREST', bu[0], bu[1] + (1 - lab) * 90 * fs, { size: 78 * fs, weight: 900, spacing: 6, alpha: regA * clamp(lab * 1.5) });
+    const blobW = Math.abs(mproj(cam, GEO.bucharest[0], GEO.bucharest[1] + 0.125)[0] - bu[0]) * 2;
+    font(100, 800); ctx.save(); ctx.letterSpacing = '6px'; const w100 = ctx.measureText('BUCHAREST').width; ctx.restore();
+    const lsz = Math.min(64 * fs, 100 * blobW * 0.56 / w100);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, bu[1] - lsz, W, lsz * 2); ctx.clip();
+    text('BUCHAREST', bu[0], bu[1] + (1 - lab) * lsz * 1.3, { size: lsz, weight: 800, spacing: lsz * 0.08, alpha: regA * clamp(lab * 1.5) });
     ctx.restore();
     // north arrow Bucharest → Corbeanca
     const s2 = win(t, 7.4, 7.8, 10.0, 10.5);
     if (s2 > 0) {
-      const a0 = mproj(cam, GEO.bucharest[0] + 0.088, 26.090), b0 = mproj(cam, GEO.corbeanca[0] - 0.016, GEO.corbeanca[1] + 0.004);
+      const a0 = mproj(cam, GEO.bucharest[0] + 0.080, 26.088), b0 = mproj(cam, GEO.corbeanca[0] - 0.0115, GEO.corbeanca[1]);
+      const mx = (a0[0] + b0[0]) / 2, my = (a0[1] + b0[1]) / 2, ddx = b0[0] - a0[0], ddy = b0[1] - a0[1];
+      const cpx = mx - ddy * 0.22, cpy = my + ddx * 0.22;
+      const path = []; for (let i = 0; i <= 80; i++) { const u = i / 80; path.push([(1 - u) * (1 - u) * a0[0] + 2 * u * (1 - u) * cpx + u * u * b0[0], (1 - u) * (1 - u) * a0[1] + 2 * u * (1 - u) * cpy + u * u * b0[1]]); }
+      const fr = eio(P(t, 7.65, 9.15));
       ctx.save(); ctx.globalAlpha *= s2;
-      const h = strokePartial([a0, b0], eio(P(t, 7.6, 9.2)), { strokeStyle: '#fff', lineWidth: 6, lineCap: 'round' });
-      if (h && P(t, 7.6, 9.2) > 0.05) { ctx.translate(h[0], h[1]); ctx.rotate(h[2]); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -12); ctx.lineTo(-10, 12); ctx.closePath(); ctx.fill(); }
+      // origin pulse on the city edge
+      const op = P(t, 7.4, 8.4); if (op > 0 && op < 1) { ctx.strokeStyle = `rgba(255,255,255,${0.8 * (1 - op)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(a0[0], a0[1], 10 + 40 * op, 0, 7); ctx.stroke(); }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(a0[0], a0[1], 8 * eob(P(t, 7.4, 7.8)), 0, 7); ctx.fill();
+      strokePartial(path, 1, { strokeStyle: `rgba(255,255,255,${0.16 * ss(P(t, 7.5, 8.0))})`, lineWidth: 6, lineCap: 'round' });
+      const h = strokePartial(path, fr, { strokeStyle: '#fff', lineWidth: 6, lineCap: 'round', shadowColor: 'rgba(140,160,255,0.9)', shadowBlur: 18 });
+      if (h && fr > 0.02 && fr < 1) {
+        ctx.save(); ctx.translate(h[0], h[1]); ctx.rotate(h[2]);
+        ctx.shadowColor = 'rgba(255,255,255,0.9)'; ctx.shadowBlur = 22; ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-8, -14); ctx.lineTo(-3, 0); ctx.lineTo(-8, 14); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      // light pulses travelling the route once it is drawn
+      if (fr >= 1) for (const k of [0, 0.34, 0.67]) { const u = (P(t, 9.15, 12) * 2.4 + k) % 1; const q = path[Math.round(u * 80)]; ctx.fillStyle = `rgba(255,255,255,${0.9 * Math.sin(u * Math.PI)})`; ctx.beginPath(); ctx.arc(q[0], q[1], 6, 0, 7); ctx.fill(); }
+      // arrival burst at Corbeanca
+      const ab = P(t, 9.1, 9.9); if (ab > 0 && ab < 1) { const c0 = mproj(cam, ...GEO.corbeanca); ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - ab)})`; ctx.lineWidth = 4 * (1 - ab) + 1; ctx.beginPath(); ctx.arc(c0[0], c0[1], 20 + 110 * eo(ab), 0, 7); ctx.stroke(); }
       ctx.restore();
       const cb = mproj(cam, ...GEO.corbeanca);
       pin(cb[0], cb[1], 1.5 * eob(P(t, 9.15, 9.7)), s2, P(t, 9.6, 12) * 3 % 1);
@@ -426,12 +455,12 @@ function drawRoad(t, a, dist) {
   ctx.save(); ctx.globalAlpha *= a;
   const sky = ctx.createLinearGradient(0, 0, 0, VP[1]); sky.addColorStop(0, rgb(C.black)); sky.addColorStop(1, rgb([24, 28, 90]));
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, VP[1]);
-  ctx.fillStyle = rgb([12, 13, 22]); ctx.fillRect(0, VP[1], W, H - VP[1]);
+  ctx.fillStyle = rgb([12, 17, 48]); ctx.fillRect(0, VP[1], W, H - VP[1]);
   const glow = ctx.createRadialGradient(VP[0], VP[1], 0, VP[0], VP[1], 700); glow.addColorStop(0, 'rgba(92,108,255,0.35)'); glow.addColorStop(1, 'rgba(92,108,255,0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
   // asphalt
   const zn = 2.2, zf = 120;
-  ctx.fillStyle = '#1b1d2c'; ctx.beginPath(); ctx.moveTo(roadX(-4, zn), roadY(zn)); ctx.lineTo(roadX(-4, zf), roadY(zf)); ctx.lineTo(roadX(4, zf), roadY(zf)); ctx.lineTo(roadX(4, zn), roadY(zn)); ctx.fill();
+  ctx.fillStyle = '#1a2150'; ctx.beginPath(); ctx.moveTo(roadX(-4, zn), roadY(zn)); ctx.lineTo(roadX(-4, zf), roadY(zf)); ctx.lineTo(roadX(4, zf), roadY(zf)); ctx.lineTo(roadX(4, zn), roadY(zn)); ctx.fill();
   // edge lines
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4;
   for (const e of [-3.7, 3.7]) { ctx.beginPath(); ctx.moveTo(roadX(e, zn), roadY(zn)); ctx.lineTo(roadX(e, zf), roadY(zf)); ctx.stroke(); }
@@ -518,17 +547,22 @@ function act1b(t) {
   const net = ss(P(t, 26.4, 27.0));
   if (net > 0) {
     ctx.save(); ctx.globalAlpha *= net;
-    const flat = eio(P(t, 28.7, 29.6));
-    const c = [W / 2, 470];
-    const nodes = [[W / 2 + 40, 900, 'BUCHAREST', 27.0], [380, 260, '', 27.3], [1580, 230, '', 27.45], [250, 700, '', 27.6], [1700, 640, '', 27.75], [1010, 120, '', 27.9]];
-    for (const [nx, ny, label, ts] of nodes) {
+    const flat = eio(P(t, 28.95, 29.65));
+    const c = [W / 2, 500];
+    // real directions from Corbeanca (screen up = north); names sit at the end of each line
+    const nodes = [[W / 2 + 30, 860, 'BUCHAREST', 26.6, true], [W / 2 - 20, 175, 'PLOIEȘTI', 27.25], [W / 2 - 540, 230, 'TÂRGOVIȘTE', 27.45], [W / 2 - 720, 420, 'PITEȘTI', 27.65], [W / 2 + 720, 600, 'CONSTANȚA', 27.85]];
+    for (const [nx, ny, label, ts, cap] of nodes) {
       const p0 = [lerp(c[0], -100, flat), lerp(c[1], 820, flat)], p1 = [lerp(nx, W + 100, flat), lerp(ny, 820, flat)];
-      strokePartial([p0, p1], eio(P(t, ts, ts + 0.7)), { strokeStyle: `rgba(255,255,255,${label ? 0.95 : 0.55})`, lineWidth: label ? 6 : 3, lineCap: 'round' });
+      const dr = eio(P(t, ts, ts + 0.6));
+      strokePartial([p0, p1], dr, { strokeStyle: `rgba(255,255,255,${cap ? 1 : 0.8})`, lineWidth: cap ? 6 : 4, lineCap: 'round' });
       const f = P(t, ts + 0.5, 30);
-      if (flat < 0.3 && P(t, ts, ts + 0.7) >= 1) for (const k of [0, 0.33, 0.66]) { const u = (f * 1.6 + k) % 1; ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - flat * 3)})`; ctx.beginPath(); ctx.arc(lerp(p0[0], p1[0], u), lerp(p0[1], p1[1], u), 5, 0, 7); ctx.fill(); }
-      const na = (1 - flat) * eob(P(t, ts + 0.5, ts + 0.9));
-      if (na > 0) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(nx, ny, (label ? 16 : 10) * na, 0, 7); ctx.fill(); }
-      if (label) pill(label, nx, ny - 60, { rtl: false, size: 30, weight: 900, s: eob(P(t, ts + 0.4, ts + 0.8)) * (1 - flat) });
+      if (flat < 0.3 && dr >= 1) for (const k of [0, 0.5]) { const u = (f * 1.4 + k) % 1; ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - flat * 3)})`; ctx.beginPath(); ctx.arc(lerp(p0[0], p1[0], u), lerp(p0[1], p1[1], u), 5, 0, 7); ctx.fill(); }
+      const na = (1 - flat) * eob(P(t, ts + 0.45, ts + 0.85));
+      if (na > 0) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(nx, ny, (cap ? 16 : 12) * na, 0, 7); ctx.fill(); }
+      const len = Math.hypot(nx - c[0], ny - c[1]), ux = (nx - c[0]) / len, uy = (ny - c[1]) / len;
+      font(30, 800); const pw = ctx.measureText(label).width + 48;
+      const off = Math.abs(ux) * (pw / 2 + 26) + Math.abs(uy) * 46;
+      pill(label, nx + ux * off, ny + uy * off, { rtl: false, size: 30, weight: 800, s: eob(P(t, ts + 0.5, ts + 0.9)) * (1 - flat), bg: cap ? rgb(C.royalHi) : '#fff', color: cap ? '#fff' : rgb(C.royal) });
     }
     pin(c[0], c[1], 1.6 * eob(P(t, 26.5, 27.0)) * (1 - flat), 1 - flat, (t * 0.8) % 1);
     ctx.restore();
@@ -627,7 +661,7 @@ function act2(t) {
   const by = lerp(820, 790, zoomOut) + lift * 120;
   const X = (wx, par = 1) => W / 2 + (wx - cx * par) * u * par;
   // black → sky: opens up from the horizon line
-  ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+  deepBG(0, 0, W, H, t);
   const open = eio(P(t, 29.6, 30.7));
   if (open > 0) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, by - by * open, W, by * open + (H - by) * open + 4); ctx.clip();
@@ -770,7 +804,7 @@ function act3(t) {
   const pan = eio(P(t, 53.3, 54.0));
   if (pan > 0) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, H * (1 - pan), W, H * pan); ctx.clip();
-    ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+    deepBG(0, 0, W, H, t);
     const out = eio(P(t, 57.4, 58.2));
     ctx.save(); ctx.globalAlpha *= 1 - out;
     kinetic('CENTRE VALUE DN1', W / 2, 200, 53.75, { now: t, size: 104, weight: 900 });
@@ -789,8 +823,8 @@ function act3(t) {
       const yy = y + (1 - e) * 160;
       ctx.save(); ctx.globalAlpha *= clamp(e * 1.4) * (1 - ss(P(col2, 0.7, 1)));
       if (e < 1) ctx.filter = `blur(${(1 - e) * 14}px)`;
-      ctx.fillStyle = '#171a2e'; rr(x - w / 2, yy - h / 2, w, h, lerp(30, 5, shrink)); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = 'rgba(70,84,220,0.20)'; rr(x - w / 2, yy - h / 2, w, h, lerp(30, 5, shrink)); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,175,255,0.22)'; ctx.lineWidth = 2; ctx.stroke();
       ctx.restore();
       if (shrink < 0.4) {
         const ca = clamp(e * 1.5) * (1 - shrink * 2.5);
@@ -827,7 +861,7 @@ function drawMatrix(t, a) {
     text(c.v, x, y, { size: Math.max(6, 64 * sc), weight: 700, color: c.g ? '#46d38a' : '#fff', alpha: al });
   }
   // depth fade toward the horizon
-  const g = ctx.createLinearGradient(0, 0, 0, H * 0.55); g.addColorStop(0, rgb(C.black)); g.addColorStop(1, 'rgba(8,9,14,0)');
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.55); g.addColorStop(0, rgb(C.black)); g.addColorStop(1, rgb(C.black, 0));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.55);
   ctx.restore();
 }
@@ -893,7 +927,7 @@ function act4(t) {
   if (s12 > 0) {
     const wipe = eio(P(t, 68.3, 69.0)), back = eio(P(t, 75.4, 76.3));
     ctx.save(); ctx.beginPath(); ctx.rect(0, H * (1 - wipe), W, H * wipe); ctx.clip();
-    ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+    deepBG(0, 0, W, H, t);
     const base = 880, bw = 220, h1 = 240, h2 = h1 * 1.9;
     const g1 = eo5(P(t, 68.9, 69.8)), g2 = eio(P(t, 70.1, 72.8));
     const bars = [[W / 2 - 160, h1 * g1, '#3a3f58'], [W / 2 + 160, lerp(h1, h2, g2) * g1, rgb(C.royalHi)]];
@@ -955,17 +989,18 @@ function act4(t) {
 
 // ================================================================= ACT 5 — luxury villa → home at dusk (79.1 → 95)
 function act5(t) {
-  const a = ss(P(t, 79.1, 79.7)) * (1 - ss(P(t, 94.3, 95.0)));
+  const a = ss(P(t, 79.1, 79.7)) * (1 - ss(P(t, 94.7, 95.3)));
+  const rise = eio(P(t, 93.45, 95.1));             // drone shot: camera lifts away into the night sky
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a;
   const day = ss(P(t, 79.6, 82.0)), dusk = ss(P(t, 87.8, 90.2));
-  const top = mix(mix(C.royal, [70, 96, 230], day), [14, 16, 46], dusk);
-  const bot = mix(mix(C.royal2, [190, 205, 255], day), [120, 76, 110], dusk);
+  const top = mix(mix(mix(C.royal, [70, 96, 230], day), [14, 16, 46], dusk), C.black, rise);
+  const bot = mix(mix(mix(C.royal2, [190, 205, 255], day), [120, 76, 110], dusk), [24, 30, 90], rise);
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgb(top)); g.addColorStop(1, rgb(bot));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   if (dusk > 0) { const hz = ctx.createRadialGradient(W * 0.75, H * 0.8, 0, W * 0.75, H * 0.8, H); hz.addColorStop(0, `rgba(255,170,100,${0.35 * dusk})`); hz.addColorStop(1, 'rgba(255,170,100,0)'); ctx.fillStyle = hz; ctx.fillRect(0, 0, W, H); }
   // stars at dusk
-  if (dusk > 0.3) { const r = rng(12); for (let i = 0; i < 70; i++) { const x = r() * W, y = r() * H * 0.5; ctx.fillStyle = `rgba(255,255,255,${(dusk - 0.3) * (0.3 + 0.5 * r()) * (0.6 + 0.4 * Math.sin(t * 2 + i))})`; ctx.fillRect(x, y, 2, 2); } }
+  if (dusk > 0.3) { const r = rng(12); const n = Math.round(70 + 110 * rise); for (let i = 0; i < n; i++) { const x = r() * W, y = r() * H * (0.5 + 0.5 * rise) + rise * 260 - 120 * rise, k = r(); ctx.fillStyle = `rgba(255,255,255,${(dusk - 0.3) * (0.3 + 0.5 * k) * (0.6 + 0.4 * Math.sin(t * 2 + i)) * (i >= 70 ? rise : 1)})`; ctx.fillRect(x, y, 2, 2); } }
   // camera: hero close → neighbourhood wide → back to hero
   const wide = eio(P(t, 82.6, 86.4)) * (1 - eio(P(t, 87.6, 93.2)));
   const u = lerp(62, 30, wide) * lerp(1, 1.05, P(t, 93.2, 94.5));
@@ -973,6 +1008,8 @@ function act5(t) {
   const uu = u * lerp(0.4, 1, intro);
   const by = lerp(800, 760, wide);
   const X = wx => W / 2 + wx * uu;
+  // everything on the ground slides down and away as the camera rises
+  ctx.save(); ctx.translate(W / 2, by + rise * 950); ctx.scale(1 - 0.22 * rise, 1 - 0.22 * rise); ctx.translate(-W / 2, -by);
   // lawn
   ctx.fillStyle = rgb(mix(mix(C.royal2, [92, 170, 116], day), [26, 50, 46], dusk)); ctx.fillRect(0, by, W, H - by);
   ctx.fillStyle = rgb(mix([255, 255, 255], [80, 86, 120], dusk), 0.35); ctx.fillRect(0, by, W, 3);
@@ -987,8 +1024,6 @@ function act5(t) {
   // garden lights + path light
   const gl = ss(P(t, 90.0, 91.2));
   if (gl > 0) for (const x of [-5.6, -3.4, 4.6, 6.2]) { const xx = X(x), yy = by - 0.25 * uu; const gr = ctx.createRadialGradient(xx, yy, 0, xx, yy, 40); gr.addColorStop(0, `rgba(255,206,140,${0.8 * gl})`); gr.addColorStop(1, 'rgba(255,206,140,0)'); ctx.fillStyle = gr; ctx.fillRect(xx - 40, yy - 40, 80, 80); ctx.fillStyle = `rgba(255,230,190,${gl})`; ctx.fillRect(xx - 3, yy - 3, 6, 6); }
-  const pl = eio(P(t, 91.0, 92.6));
-  if (pl > 0) strokePartial([[X(2.4), by + 3 * uu], [X(1.8), by + 0.05 * uu]], pl, { strokeStyle: 'rgba(255,214,150,1)', lineWidth: 6, lineCap: 'round', shadowColor: 'rgba(255,190,110,1)', shadowBlur: 24 });
   // foreground depth: large out-of-focus trees and hedge at the frame edges
   const fg = ss(P(t, 82.8, 84.0)) * (1 - ss(P(t, 88.2, 89.4)));
   if (fg > 0) {
@@ -998,19 +1033,20 @@ function act5(t) {
     ctx.restore();
   }
   ctx.restore();
+  ctx.restore();
 }
 
 // ================================================================= ACT 6 — brand (93.9 → 102)
 function act6(t) {
-  const a = ss(P(t, 93.9, 94.5));
+  const a = ss(P(t, 94.55, 95.15));
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a;
-  ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+  deepBG(0, 0, W, H, t);
   const v = ctx.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H / 2, W * 0.7);
   v.addColorStop(0, 'rgba(38,44,168,0.35)'); v.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   const out2 = 1 - ss(P(t, 100.4, 100.9));
   // logo build: circle stroke draws, then opens into the gold rule
-  const cdraw = eio(P(t, 94.0, 94.8)), copen = eio(P(t, 94.8, 95.4));
+  const cdraw = eio(P(t, 94.5, 95.1)), copen = eio(P(t, 95.1, 95.6));
   if (copen < 1) {
     ctx.save(); ctx.globalAlpha *= 1 - copen; ctx.strokeStyle = rgb(C.gold); ctx.lineWidth = 4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.arc(W / 2, 400, 60 * (1 + copen * 3), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * cdraw); ctx.stroke(); ctx.restore();
@@ -1023,7 +1059,7 @@ function act6(t) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, 300 - 80, W, 160); ctx.clip();
   for (let i = 0; i < word.length; i++) {
     const ch = word[i]; font(104, 300); const cw = ctx.measureText(ch).width + 22;
-    const u = expo(P(t, 94.5 + i * 0.035, 95.3 + i * 0.035));
+    const u = expo(P(t, 94.7 + i * 0.035, 95.5 + i * 0.035));
     text(ch, x + cw / 2 - 11, 300 + (1 - u) * 120, { size: 104, weight: 300, alpha: u, blur: (1 - u) * 8 });
     x += cw;
   }
@@ -1055,14 +1091,14 @@ function act6(t) {
 function drawFrame(t) {
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none';
-  ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+  deepBG(0, 0, W, H, t);
   if (t < 17.5) act1(t);
   if (t > 16.2 && t < 30.0) act1b(t);
   if (t > 29.2 && t < 45.3) act2(t);
   if (t > 44.5 && t < 61) act3(t);
   if (t > 58.9 && t < 80) act4(t);
-  if (t > 79 && t < 95.1) act5(t);
-  if (t > 93.8) act6(t);
+  if (t > 79 && t < 95.4) act5(t);
+  if (t > 94.5) act6(t);
   // gentle vignette
   const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, W * 0.75);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.28)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -1088,7 +1124,7 @@ window.renderFrame = renderFrame;
 window.READY = (async () => {
   await loadImg('logo', 'assets/isromana-logo.jpg');
   const loads = [];
-  for (const w of [200, 300, 400, 500, 700, 800, 900]) for (const s of ['אבג', 'ABC123']) loads.push(document.fonts.load(`${w} 20px ${FONT}`, s).catch(() => null));
+  for (const w of [200, 300, 400, 500, 700, 800]) for (const s of ['אבג', 'ABC123', 'ȘȚÂ']) loads.push(document.fonts.load(`${w} 20px ${FONT}`, s).catch(() => null));
   await Promise.all(loads); await document.fonts.ready;
   renderFrame(0);
   return true;
