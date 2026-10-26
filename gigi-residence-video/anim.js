@@ -43,6 +43,8 @@ const GEO = {
   corbeanca: [44.6005, 26.0450], valueCentre: [44.6125, 26.0840],
   lidl: [44.5945, 26.0530], mega: [44.6040, 26.0385], penny: [44.5885, 26.0440],
 };
+// schematic position used on the Bucharest → Corbeanca map: due north of the centre, ~15 km
+const CORB_S = [44.578, 26.1025];
 const DN1 = [[44.447, 26.084], [44.466, 26.080], [44.480, 26.075], [44.500, 26.080], [44.520, 26.078], [44.540, 26.075], [44.556, 26.073], [44.572, 26.076], [44.590, 26.080], [44.606, 26.083], [44.625, 26.089], [44.650, 26.096], [44.690, 26.103]];
 const ROUTE = [GEO.otp, [44.5725, 26.0790], [44.5760, 26.0748], [44.5830, 26.0660], [44.5915, 26.0560], [44.5975, 26.0490], GEO.corbeanca];
 const A0C = [44.432, 26.100], A0R = [0.140, 0.205];
@@ -320,8 +322,7 @@ function drawRegion(cam, a, t, o = {}) {
   const tA = o.townA ?? 1;
   if (tA > 0) {
     ctx.save(); ctx.globalAlpha *= tA;
-    blob(cam, 44.552, 26.068, 0.008, 0.012, 21); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
-    blob(cam, ...GEO.corbeanca, 0.012, 0.019, 23); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    blob(cam, ...CORB_S, 0.012, 0.019, 23); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.stroke();
     ctx.restore();
   }
   ctx.restore();
@@ -341,8 +342,8 @@ const CAM_A = (() => {
     { t: 3.7, lon: 25.0, lat: 45.8, z: 150, rot: -0.06 },
     { t: 4.9, lon: 26.1025, lat: 44.4268, z: 2000 },
     { t: 5.6, lon: 26.1025, lat: 44.4268, z: 2150, ease: t => t },
-    { t: 8.2, lon: 26.075, lat: 44.513, z: 2550 },
-    { t: 10.25, lon: 26.072, lat: 44.517, z: 2650, ease: t => t },
+    { t: 8.2, lon: 26.1025, lat: 44.497, z: 2550 },
+    { t: 10.25, lon: 26.1025, lat: 44.500, z: 2650, ease: t => t },
     { t: 11.4, lon: 30.4, lat: 40.0, z: 40 },
     { t: 17.4, lon: 30.0, lat: 39.6, z: 44, ease: t => t },
   ];
@@ -394,9 +395,9 @@ function act1(t) {
     // north arrow Bucharest → Corbeanca
     const s2 = win(t, 7.4, 7.8, 10.0, 10.5);
     if (s2 > 0) {
-      const a0 = mproj(cam, GEO.bucharest[0] + 0.080, 26.088), b0 = mproj(cam, GEO.corbeanca[0] - 0.0115, GEO.corbeanca[1]);
+      const a0 = mproj(cam, GEO.bucharest[0] + 0.0835, GEO.bucharest[1]), b0 = mproj(cam, CORB_S[0] - 0.0105, CORB_S[1]);
       const mx = (a0[0] + b0[0]) / 2, my = (a0[1] + b0[1]) / 2, ddx = b0[0] - a0[0], ddy = b0[1] - a0[1];
-      const cpx = mx - ddy * 0.22, cpy = my + ddx * 0.22;
+      const cpx = mx, cpy = my;                                  // straight, centred route
       const path = []; for (let i = 0; i <= 80; i++) { const u = i / 80; path.push([(1 - u) * (1 - u) * a0[0] + 2 * u * (1 - u) * cpx + u * u * b0[0], (1 - u) * (1 - u) * a0[1] + 2 * u * (1 - u) * cpy + u * u * b0[1]]); }
       const fr = eio(P(t, 7.65, 9.15));
       ctx.save(); ctx.globalAlpha *= s2;
@@ -413,9 +414,12 @@ function act1(t) {
       // light pulses travelling the route once it is drawn
       if (fr >= 1) for (const k of [0, 0.34, 0.67]) { const u = (P(t, 9.15, 12) * 2.4 + k) % 1; const q = path[Math.round(u * 80)]; ctx.fillStyle = `rgba(255,255,255,${0.9 * Math.sin(u * Math.PI)})`; ctx.beginPath(); ctx.arc(q[0], q[1], 6, 0, 7); ctx.fill(); }
       // arrival burst at Corbeanca
-      const ab = P(t, 9.1, 9.9); if (ab > 0 && ab < 1) { const c0 = mproj(cam, ...GEO.corbeanca); ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - ab)})`; ctx.lineWidth = 4 * (1 - ab) + 1; ctx.beginPath(); ctx.arc(c0[0], c0[1], 20 + 110 * eo(ab), 0, 7); ctx.stroke(); }
+      const ab = P(t, 9.1, 9.9); if (ab > 0 && ab < 1) { const c0 = mproj(cam, ...CORB_S); ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - ab)})`; ctx.lineWidth = 4 * (1 - ab) + 1; ctx.beginPath(); ctx.arc(c0[0], c0[1], 20 + 110 * eo(ab), 0, 7); ctx.stroke(); }
       ctx.restore();
-      const cb = mproj(cam, ...GEO.corbeanca);
+      const cb = mproj(cam, ...CORB_S);
+      // distance: counts up to 15 km while the route draws
+      const kmA = ss(P(t, 7.9, 8.3)) * (1 - ss(P(t, 9.95, 10.35)));
+      if (kmA > 0) { const mid = path[40]; pill(`${Math.round(15 * eo(P(t, 7.9, 9.15)))} ק״מ`, mid[0] + 130, mid[1], { size: 38, weight: 800, s: eob(P(t, 7.9, 8.4)), alpha: kmA * s2, bg: rgb(C.royalHi), color: '#fff' }); }
       pin(cb[0], cb[1], 1.5 * eob(P(t, 9.15, 9.7)), s2, P(t, 9.6, 12) * 3 % 1);
       pill('CORBEANCA', cb[0], cb[1] - 92, { rtl: false, size: 40, weight: 900, s: eob(P(t, 9.4, 9.95)), alpha: s2 });
     }
@@ -960,7 +964,7 @@ function act4(t) {
     ctx.save(); ctx.globalAlpha *= s13;
     const cam = { lon: 26.06, lat: 44.56, z: lerp(2600, 3000, P(t, 75.8, 79.8)), rot: 0 };
     drawRegion(cam, 0.35, t, {});
-    const c = mproj(cam, ...GEO.corbeanca);
+    const c = mproj(cam, ...CORB_S);
     const cxy = [W / 2, H / 2 + 20];
     const fade = 1 - ss(P(t, 78.7, 79.3));
     const icons = [[-Math.PI / 2 - 1.0, 'plane', 76.3], [-Math.PI / 2 + 1.0, 'house', 76.75], [Math.PI / 2, 'chart', 77.2]];
