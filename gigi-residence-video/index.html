@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="he">
+<head>
+<meta charset="utf-8">
+<title>GIGI Residence Film</title>
+<style>
+  @font-face{font-family:Heebo;font-weight:300;src:url(assets/fonts/heebo-hebrew-300-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F,U+05F3-05F4}
+  @font-face{font-family:Heebo;font-weight:400;src:url(assets/fonts/heebo-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
+  @font-face{font-family:Heebo;font-weight:500;src:url(assets/fonts/heebo-hebrew-500-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
+  @font-face{font-family:Heebo;font-weight:700;src:url(assets/fonts/heebo-hebrew-700-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
+  @font-face{font-family:Heebo;font-weight:800;src:url(assets/fonts/heebo-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
+  @font-face{font-family:Heebo;font-weight:300;src:url(assets/fonts/heebo-latin-300-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+  @font-face{font-family:Heebo;font-weight:400;src:url(assets/fonts/heebo-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+  @font-face{font-family:Heebo;font-weight:500;src:url(assets/fonts/heebo-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+  @font-face{font-family:Heebo;font-weight:700;src:url(assets/fonts/heebo-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+  @font-face{font-family:Heebo;font-weight:800;src:url(assets/fonts/heebo-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+  @font-face{font-family:Cinzel;font-weight:400;src:url(assets/fonts/cinzel-latin-400-normal.woff2) format('woff2')}
+  @font-face{font-family:Cinzel;font-weight:500;src:url(assets/fonts/cinzel-latin-500-normal.woff2) format('woff2')}
+  @font-face{font-family:Cinzel;font-weight:600;src:url(assets/fonts/cinzel-latin-600-normal.woff2) format('woff2')}
+  @font-face{font-family:Cinzel;font-weight:700;src:url(assets/fonts/cinzel-latin-700-normal.woff2) format('woff2')}
+  html,body{margin:0;background:#000;overflow:hidden}
+  canvas{display:block;width:100vw;height:auto}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="assets/world.js"></script>
+<script src="assets/brands.js"></script>
+<script src="anim.js"></script>
+<script>
+  // Preview mode: open index.html?play to watch in a browser with the voiceover.
+  if (location.search.includes('play')) {
+    window.addEventListener('load', async () => {
+      await window.READY;
+      const a = new Audio('assets/voiceover.mp3');
+      document.body.addEventListener('click', () => {
+        a.currentTime = 0; a.play();
+        const t0 = performance.now();
+        const loop = () => { const t = (performance.now() - t0) / 1000; window.renderFrame(Math.min(t, 102)); if (t < 102) requestAnimationFrame(loop); };
+        loop();
+      }, { once: true });
+      window.renderFrame(0);
+    });
+  }
+</script>
+</body>
+</html>
