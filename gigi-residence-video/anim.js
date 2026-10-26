@@ -11,7 +11,8 @@ const SCALE = Number(new URLSearchParams(location.search).get('scale') || 2);
 const cv = document.getElementById('c');
 cv.width = W * SCALE; cv.height = H * SCALE;
 const ctx = cv.getContext('2d');
-const FONT = "Almoni, Assistant";   // licensed Almoni is used automatically when its files are present
+const FONT = "Almoni, Montserrat, Assistant";   // Latin + digits: Montserrat (full Romanian ȘȚĂÂ); Hebrew: Assistant
+const SERIF = "'Libre Caslon Text', serif";       // brand end card   // licensed Almoni is used automatically when its files are present
 
 // ---------------------------------------------------------------- palette
 const C = {
@@ -50,11 +51,11 @@ const D2R = Math.PI / 180;
 const mercY = lat => Math.log(Math.tan(Math.PI / 4 + lat * D2R / 2)) / D2R;
 
 // ---------------------------------------------------------------- text
-function font(size, weight = 400) { ctx.font = `${weight} ${size}px ${FONT}`; }
+function font(size, weight = 400, fam = FONT) { ctx.font = `${weight} ${size}px ${fam}`; }
 function text(str, x, y, o = {}) {
-  const { size = 28, weight = 500, color = '#fff', alpha = 1, align = 'center', rtl = false, spacing = 0, blur = 0 } = o;
+  const { size = 28, weight = 500, color = '#fff', alpha = 1, align = 'center', rtl = false, spacing = 0, blur = 0, fam = FONT } = o;
   if (alpha <= 0.002) return;
-  ctx.save(); ctx.globalAlpha *= alpha; font(size, weight);
+  ctx.save(); ctx.globalAlpha *= alpha; font(size, weight, fam);
   ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.direction = rtl ? 'rtl' : 'ltr';
   if (spacing) ctx.letterSpacing = spacing + 'px';
   if (blur > 0.3) ctx.filter = `blur(${blur}px)`;
@@ -548,9 +549,9 @@ function act1b(t) {
   if (net > 0) {
     ctx.save(); ctx.globalAlpha *= net;
     const flat = eio(P(t, 28.95, 29.65));
-    const c = [W / 2, 500];
+    const c = [W / 2, 560];
     // real directions from Corbeanca (screen up = north); names sit at the end of each line
-    const nodes = [[W / 2 + 30, 860, 'BUCHAREST', 26.6, true], [W / 2 - 20, 175, 'PLOIEȘTI', 27.25], [W / 2 - 540, 230, 'TÂRGOVIȘTE', 27.45], [W / 2 - 720, 420, 'PITEȘTI', 27.65], [W / 2 + 720, 600, 'CONSTANȚA', 27.85]];
+    const nodes = [[W / 2 + 30, 860, 'BUCHAREST', 26.6, true], [W / 2 + 12, 330, 'PLOIEȘTI', 27.25], [W / 2 - 200, 140, 'BRAȘOV', 27.45], [W / 2 - 640, 440, 'PITEȘTI', 27.65], [W / 2 + 560, 620, 'CONSTANȚA', 27.85]];
     for (const [nx, ny, label, ts, cap] of nodes) {
       const p0 = [lerp(c[0], -100, flat), lerp(c[1], 820, flat)], p1 = [lerp(nx, W + 100, flat), lerp(ny, 820, flat)];
       const dr = eio(P(t, ts, ts + 0.6));
@@ -1041,49 +1042,52 @@ function act6(t) {
   const a = ss(P(t, 94.55, 95.15));
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a;
-  deepBG(0, 0, W, H, t);
-  const v = ctx.createRadialGradient(W / 2, H * 0.45, 40, W / 2, H / 2, W * 0.7);
-  v.addColorStop(0, 'rgba(38,44,168,0.35)'); v.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  // royal-blue field with a soft centre light and darker edges
+  ctx.fillStyle = rgb([14, 22, 92]); ctx.fillRect(0, 0, W, H);
+  const v = ctx.createRadialGradient(W / 2, H * 0.48, 60, W / 2, H * 0.5, W * 0.62);
+  v.addColorStop(0, 'rgba(40,58,170,0.75)'); v.addColorStop(0.6, 'rgba(26,38,130,0.35)'); v.addColorStop(1, 'rgba(6,10,50,0.6)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
   const out2 = 1 - ss(P(t, 100.4, 100.9));
-  // logo build: circle stroke draws, then opens into the gold rule
-  const cdraw = eio(P(t, 94.5, 95.1)), copen = eio(P(t, 95.1, 95.6));
-  if (copen < 1) {
-    ctx.save(); ctx.globalAlpha *= 1 - copen; ctx.strokeStyle = rgb(C.gold); ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(W / 2, 400, 60 * (1 + copen * 3), -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * cdraw); ctx.stroke(); ctx.restore();
-  }
-  // GIGI RESIDENCE — letters rise out of a mask (typographic stand-in for the GIGI logo)
-  const word = 'GIGI RESIDENCE';
-  font(104, 300); ctx.save(); ctx.letterSpacing = '22px';
-  const tw = ctx.measureText(word).width; ctx.restore();
+  // GIGI RESIDENCE — classic serif, silver, letters rise out of a mask
+  const word = 'GIGI RESIDENCE', fs = 150, sp = 8, gy = 205;
+  font(fs, 400, SERIF);
+  const widths = [...word].map(ch => ctx.measureText(ch).width + sp);
+  const tw = widths.reduce((p, q) => p + q, 0) - sp;
+  const silver = ctx.createLinearGradient(0, gy - 70, 0, gy + 70); silver.addColorStop(0, '#ffffff'); silver.addColorStop(0.55, '#e9ecf6'); silver.addColorStop(1, '#b9bfd3');
   let x = W / 2 - tw / 2;
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 300 - 80, W, 160); ctx.clip();
-  for (let i = 0; i < word.length; i++) {
-    const ch = word[i]; font(104, 300); const cw = ctx.measureText(ch).width + 22;
-    const u = expo(P(t, 94.7 + i * 0.035, 95.5 + i * 0.035));
-    text(ch, x + cw / 2 - 11, 300 + (1 - u) * 120, { size: 104, weight: 300, alpha: u, blur: (1 - u) * 8 });
-    x += cw;
-  }
+  ctx.save(); ctx.beginPath(); ctx.rect(0, gy - 110, W, 220); ctx.clip();
+  [...word].forEach((ch, i) => {
+    const u = expo(P(t, 94.65 + i * 0.04, 95.5 + i * 0.04));
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,30,0.45)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+    text(ch, x + (widths[i] - sp) / 2, gy + (1 - u) * 160, { size: fs, weight: 400, fam: SERIF, color: silver, alpha: u, blur: (1 - u) * 8 });
+    ctx.restore();
+    x += widths[i];
+  });
   ctx.restore();
-  const ruleW = 360 * eio(P(t, 95.0, 95.8));
-  ctx.fillStyle = rgb(C.gold); ctx.fillRect(W / 2 - ruleW / 2, 392, ruleW, 2);
-  text('BY', W / 2, 438, { size: 24, weight: 700, spacing: 10, alpha: ss(P(t, 95.25, 95.7)), color: rgb(C.gold) });
+  // gold rule draws out from the centre
+  const ruleW = 560 * eio(P(t, 95.0, 95.8));
+  ctx.fillStyle = rgb(C.gold); ctx.fillRect(W / 2 - ruleW / 2, 318, ruleW, 2.5);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 340, W, 90); ctx.clip();
+  const bu = expo(P(t, 95.25, 95.9));
+  text('BY', W / 2, 386 + (1 - bu) * 70, { size: 68, weight: 400, fam: SERIF, color: rgb(C.gold), alpha: bu, spacing: 4 });
+  ctx.restore();
+  // ISROMANA official logo (screen-blended so its black field disappears)
   const img = IMG.logo;
   if (img) {
-    const la = ss(P(t, 95.35, 96.2)), lw = 520, lh = lw * img.height / img.width;
-    const ls = lerp(0.94, 1, eo5(P(t, 95.35, 96.8)));
+    const la = ss(P(t, 95.4, 96.3)), lw = 700, lh = lw * img.height / img.width, top = 420;
+    const ls = lerp(0.94, 1, eo5(P(t, 95.4, 96.9)));
     ctx.save(); ctx.globalAlpha = la; ctx.globalCompositeOperation = 'screen';
     if (la < 1) ctx.filter = `blur(${(1 - la) * 10}px)`;
-    ctx.translate(W / 2, 470 + lh / 2); ctx.scale(ls, ls); ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh); ctx.restore();
+    ctx.translate(W / 2, top + lh / 2); ctx.scale(ls, ls); ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh); ctx.restore();
+    // LUXURY RESIDENCE moment: a light sweep across the logo's own tagline
     const sw = P(t, 96.5, 97.6);
     if (sw > 0 && sw < 1) {
-      const yy = 470 + lh * 0.935, xx = W / 2 - lw * 0.42 + lw * 0.84 * eio(sw);
-      const gr = ctx.createRadialGradient(xx, yy, 0, xx, yy, 70); gr.addColorStop(0, 'rgba(255,240,210,0.5)'); gr.addColorStop(1, 'rgba(255,240,210,0)');
-      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = gr; ctx.fillRect(xx - 70, yy - 70, 140, 140); ctx.restore();
+      const yy = top + lh * 0.935, xx = W / 2 - lw * 0.42 + lw * 0.84 * eio(sw);
+      const gr = ctx.createRadialGradient(xx, yy, 0, xx, yy, 80); gr.addColorStop(0, 'rgba(255,240,210,0.5)'); gr.addColorStop(1, 'rgba(255,240,210,0)');
+      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = gr; ctx.fillRect(xx - 80, yy - 80, 160, 160); ctx.restore();
     }
-    const ul = eio(P(t, 96.5, 97.4)) * out2;
-    ctx.fillStyle = rgb(C.gold, 0.85 * ul); ctx.fillRect(W / 2 - lw * 0.4 * ul, 470 + lh + 6, lw * 0.8 * ul, 2);
   }
-  kinetic('מרימים את הסטנדרט רמה אחת מעל.', W / 2, 940, 98.05, { now: t, size: 50, weight: 700, out: 100.35, stagger: 0.08 });
+  kinetic('מרימים את הסטנדרט רמה אחת מעל.', W / 2, 1000, 98.05, { now: t, size: 44, weight: 700, out: 100.35, stagger: 0.08, alpha: out2 });
   ctx.restore();
 }
 
@@ -1124,7 +1128,8 @@ window.renderFrame = renderFrame;
 window.READY = (async () => {
   await loadImg('logo', 'assets/isromana-logo.jpg');
   const loads = [];
-  for (const w of [200, 300, 400, 500, 700, 800]) for (const s of ['אבג', 'ABC123', 'ȘȚÂ']) loads.push(document.fonts.load(`${w} 20px ${FONT}`, s).catch(() => null));
+  for (const w of [200, 300, 400, 500, 700, 800, 900]) for (const s of ['אבג', 'ABC123', 'ȘȚÂ']) loads.push(document.fonts.load(`${w} 20px ${FONT}`, s).catch(() => null));
+  loads.push(document.fonts.load(`400 40px ${SERIF}`, 'GIGI RESIDENCE BY'));
   await Promise.all(loads); await document.fonts.ready;
   renderFrame(0);
   return true;

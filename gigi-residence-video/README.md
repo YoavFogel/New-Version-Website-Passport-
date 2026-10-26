@@ -8,7 +8,7 @@
 - heavy Hebrew typography;
 - real motion blur (3 sub-frames, 180° shutter, `MB=3`).
 
-**Font:** the film is set up for **Almoni** (AlefAlefAlef). Almoni is a commercial licensed font, so it isn't included. Copy the licensed web-font files into `assets/fonts/` as `almoni-200.woff2`, `almoni-300.woff2`, `almoni-400.woff2`, `almoni-500.woff2`, `almoni-700.woff2`, `almoni-800.woff2` and `almoni-900.woff2`, then rebuild. Until then the film uses **Assistant** (OFL), the closest free match to Almoni's clean, squared Hebrew, with Latin Extended for Romanian city names.
+**Font:** the film is set up for **Almoni** (AlefAlefAlef). Almoni is a commercial licensed font, so it isn't included. Copy the licensed web-font files into `assets/fonts/` as `almoni-200.woff2`, `almoni-300.woff2`, `almoni-400.woff2`, `almoni-500.woff2`, `almoni-700.woff2`, `almoni-800.woff2` and `almoni-900.woff2`, then rebuild. Until then the film uses **Assistant** (OFL) for Hebrew, the closest free match to Almoni's clean, squared letterforms, and **Montserrat** (OFL) for Latin text and numbers. Montserrat covers the Romanian ȘȚĂÂ correctly; Assistant has no Ș or Ț. The brand end card uses **Libre Caslon Text** (OFL), matching the client's reference.
 
 Procedural motion-graphics film. Every frame is drawn on one canvas as a pure function of time (`anim.js`). The frames are rendered headless in Chromium (Playwright) at 3840×2160, 25 fps, and muxed with the supplied Hebrew voiceover (unchanged) and an original synthesised music bed (`music.py`, no third-party samples, so it needs no licence).
 
