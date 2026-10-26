@@ -172,6 +172,23 @@ function pin(x, y, s, a = 1, pulse = -1, core = rgb(C.royal)) {
   ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill();
   ctx.restore();
 }
+function familyGlyph(x, y, s, col) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = col;
+  for (const [dx, r, h] of [[-12, 5.5, 22], [12, 5.5, 22], [0, 4.2, 14]]) { ctx.beginPath(); ctx.arc(dx, -h + 2, r, 0, 7); ctx.fill(); rr(dx - r * 1.2, -h + r + 4, r * 2.4, h - r - 2 + 12, r); ctx.fill(); }
+  ctx.restore();
+}
+function briefcaseGlyph(x, y, s, col) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3.4; ctx.lineJoin = 'round';
+  rr(-18, -8, 36, 26, 5); ctx.fill(); ctx.beginPath(); ctx.moveTo(-7, -8); ctx.lineTo(-7, -14); ctx.lineTo(7, -14); ctx.lineTo(7, -8); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.fillRect(-18, 1, 36, 2.5); ctx.restore();
+}
+function bulbGlyph(x, y, s, col) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(0, -6, 13, 0, 7); ctx.fill(); rr(-7, 5, 14, 9, 2); ctx.fill(); rr(-5, 15, 10, 4, 2); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+  for (const a of [-2.4, -1.57, -0.74]) { ctx.beginPath(); ctx.moveTo(Math.cos(a) * 18, -6 + Math.sin(a) * 18); ctx.lineTo(Math.cos(a) * 24, -6 + Math.sin(a) * 24); ctx.stroke(); }
+  ctx.restore();
+}
 function polyLen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
 function strokePartial(pts, f, style) {
   if (f <= 0 || pts.length < 2) return null;
@@ -205,11 +222,11 @@ function drawLogoCorner(a) {
   ctx.drawImage(img, W * 0.04, H * 0.04, w, h); ctx.restore();
 }
 
-// ================================================================= DOT MAPS
-const DOTS = window.DOTS;
-function unpack(arr) { const o = []; for (let i = 0; i < arr.length; i += 3) o.push([arr[i + 1], arr[i], arr[i + 2]]); return o; } // [lat, lon, code]
-const D_COARSE = unpack(DOTS.coarse), D_MED = unpack(DOTS.med), D_RO = unpack(DOTS.ro);
-
+// ================================================================= MAPS (solid vector)
+const WORLDP = (window.WORLD || []).map(c => ({
+  ro: c.name === 'Romania', il: c.name === 'Israel',
+  rings: c.rings.map(r => { let x0 = 1e9, x1 = -1e9; for (const [lon] of r) { x0 = Math.min(x0, lon); x1 = Math.max(x1, lon); } return { pts: r, x0, x1 }; }),
+}));
 function mproj(cam, lat, lon) {
   const dx = (lon - cam.lon) * cam.z, dy = -(mercY(lat) - mercY(cam.lat)) * cam.z;
   const c = Math.cos(cam.rot || 0), s = Math.sin(cam.rot || 0);
@@ -224,7 +241,7 @@ function track(keys, t) {
       const za = Math.log(a.z), zb = Math.log(b.z), z = Math.exp(lerp(za, zb, u));
       let w = u;
       if (Math.abs(zb - za) > 0.3) { const ra = 1 / a.z, rb = 1 / b.z, r = 1 / z; w = clamp((ra - r) / (ra - rb)); }
-      return { lon: lerp(a.lon, b.lon, w), lat: lerp(a.lat, b.lat, w), z, rot: lerp(a.rot || 0, b.rot || 0, u), ox: lerp(a.ox || 0, b.ox || 0, u), oy: lerp(a.oy || 0, b.oy || 0, u) };
+      return { lon: lerp(a.lon, b.lon, w), lat: lerp(a.lat, b.lat, w), z, rot: lerp(a.rot || 0, b.rot || 0, u) };
     }
   }
   return { ...keys[keys.length - 1] };
@@ -232,227 +249,291 @@ function track(keys, t) {
 function orthoProj(g, lat, lon) {
   const p = lat * D2R, l = (lon - g.lon0) * D2R, p0 = g.lat0 * D2R;
   const cosc = Math.sin(p0) * Math.sin(p) + Math.cos(p0) * Math.cos(p) * Math.cos(l);
-  return [W / 2 + g.R * Math.cos(p) * Math.sin(l), H / 2 - g.R * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l)), cosc];
+  let x = g.R * Math.cos(p) * Math.sin(l), y = g.R * (Math.cos(p0) * Math.sin(p) - Math.sin(p0) * Math.cos(p) * Math.cos(l));
+  if (cosc < 0) { const k = g.R / Math.hypot(x, y); x *= k; y *= k; }
+  return [W / 2 + x, H / 2 - y, cosc];
 }
-// draw a dot set. colourFn(code) -> [rgb, alpha]; size in px
-function drawDots(list, proj, size, colourFn, a = 1) {
+// land: o = {land, ro, il, border, roLine}
+function drawCountries(cam, proj, a, o) {
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha *= a;
-  let last = null;
-  for (const d of list) {
-    const q = proj(d[0], d[1]); if (!q) continue;
-    if (q[0] < -10 || q[0] > W + 10 || q[1] < -10 || q[1] > H + 10) continue;
-    const [col, al, sc] = colourFn(d[2], q);
-    if (al <= 0.01) continue;
-    const key = col + al;
-    if (key !== last) { ctx.fillStyle = rgb(col, al); last = key; }
-    const r = size * (sc || 1);
-    ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7); ctx.fill();
-  }
-  ctx.restore();
-}
-// procedural local dot field: Bucharest → Corbeanca region
-const LOCAL = (() => {
-  const r = rng(9), out = [];
-  const st = 0.0042;
-  const towns = [[44.552, 26.068, 0.010, 0.014], [44.600, 26.045, 0.012, 0.018], [44.618, 26.095, 0.007, 0.012], [44.553, 26.135, 0.007, 0.011], [44.585, 26.150, 0.006, 0.010]];
-  const greens = [[44.518, 26.075, 0.012, 0.020], [44.535, 26.055, 0.010, 0.016], [44.612, 26.020, 0.014, 0.022], [44.628, 26.050, 0.010, 0.018], [44.582, 26.018, 0.010, 0.016], [44.545, 26.030, 0.012, 0.018], [44.645, 26.070, 0.012, 0.018], [44.565, 26.118, 0.010, 0.016]];
-  let row = 0;
-  for (let la = 44.28; la <= 44.74; la += st * 0.72, row++) {
-    for (let lo = 25.80 + (row % 2) * st / 2; lo <= 26.42; lo += st) {
-      const [bl, bo] = GEO.bucharest;
-      const du = Math.hypot((la - bl) / 0.085, (lo - bo) / 0.125);
-      let type = 0, w = 0;
-      if (du < 1.05) { w = Math.exp(-du * du * 1.6); if (r() < 0.25 + 0.75 * w) type = 1; }
-      for (const [a, b, rl, ro] of towns) { const d = Math.hypot((la - a) / rl, (lo - b) / ro); if (d < 1 && r() < 0.85 - d * 0.5) { type = 2; w = 1 - d; } }
-      for (const [a, b, rl, ro] of greens) { const d = Math.hypot((la - a) / rl, (lo - b) / ro); if (d < 1 && type !== 2 && r() < 0.9) { type = 3; w = 1 - d; } }
-      out.push([la, lo, type, w, r()]);
+  const xr = cam ? W / cam.z : 999;
+  for (const c of WORLDP) {
+    ctx.beginPath(); let any = false;
+    for (const r of c.rings) {
+      if (cam && (r.x1 < cam.lon - xr * 1.3 || r.x0 > cam.lon + xr * 1.3)) continue;
+      any = true;
+      r.pts.forEach(([lon, lat], i) => { const q = proj(lat, lon); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); });
+      ctx.closePath();
     }
+    if (!any) continue;
+    ctx.fillStyle = c.ro ? o.ro : c.il ? (o.il || o.land) : o.land; ctx.fill();
+    ctx.strokeStyle = o.border; ctx.lineWidth = 1; ctx.stroke();
   }
-  return out;
-})();
-function drawLocal(cam, a, o = {}) {
-  if (a <= 0) return;
-  const sp = 0.0042 * cam.z;
-  const size = clamp(sp * 0.22, 0.8, 7);
-  const grow = o.grow || (() => 1);
-  ctx.save(); ctx.globalAlpha *= a;
-  const cols = o.cols || { 0: [255, 255, 255, 0.07], 1: [255, 255, 255, 0.85], 2: [200, 210, 255, 0.75], 3: [86, 196, 132, 0.8] };
-  for (const d of LOCAL) {
-    const q = mproj(cam, d[0], d[1]);
-    if (q[0] < -10 || q[0] > W + 10 || q[1] < -10 || q[1] > H + 10) continue;
-    const c = cols[d[2]], g = grow(d);
-    if (g <= 0) continue;
-    const s = size * (d[2] === 1 ? 0.55 + 0.6 * d[3] : d[2] === 0 ? 0.7 : 0.9) * g;
-    ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] * (d[2] === 0 ? 1 : 0.5 + 0.5 * g)})`;
-    ctx.beginPath(); ctx.arc(q[0], q[1], s, 0, 7); ctx.fill();
+  if (o.roLine > 0) {
+    const ro = WORLDP.find(c => c.ro);
+    for (const r of ro.rings) { const pts = r.pts.map(([lon, lat]) => proj(lat, lon)); pts.push(pts[0]); strokePartial(pts, o.roLine, { strokeStyle: '#fff', lineWidth: 3, lineJoin: 'round' }); }
   }
   ctx.restore();
 }
-const mapPts = (cam, arr) => arr.map(([la, lo]) => mproj(cam, la, lo));
+// smooth closed blob (lat/lon) for clean schematic areas
+function blob(cam, la, lo, rl, ro, seed, n = 48) {
+  const r = rng(seed), k1 = r() * 6, k2 = r() * 6, pts = [];
+  for (let i = 0; i < n; i++) {
+    const th = i / n * Math.PI * 2, f = 1 + 0.07 * Math.sin(3 * th + k1) + 0.05 * Math.cos(5 * th + k2);
+    pts.push(mproj(cam, la + Math.sin(th) * rl * f, lo + Math.cos(th) * ro * f));
+  }
+  ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath();
+}
+const GREENS = [[44.528, 26.074, 0.011, 0.018], [44.538, 26.048, 0.008, 0.014], [44.618, 26.015, 0.012, 0.020], [44.632, 26.055, 0.010, 0.017], [44.585, 26.012, 0.009, 0.015], [44.650, 26.090, 0.010, 0.018]];
+// clean schematic of the Bucharest → Corbeanca area
+function drawRegion(cam, a, t, o = {}) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a;
+  const gA = o.greenA ?? 1;
+  if (gA > 0) { ctx.save(); ctx.globalAlpha *= gA; GREENS.forEach(([la, lo, rl, ro], i) => { blob(cam, la, lo, rl, ro, 50 + i); ctx.fillStyle = 'rgba(64,170,112,0.42)'; ctx.fill(); }); ctx.restore(); }
+  // Bucharest: city area with a fine street texture and ring roads
+  const [bl, bo] = GEO.bucharest;
+  blob(cam, bl, bo, 0.085, 0.125, 7, 72);
+  ctx.save(); ctx.fillStyle = rgb(C.royal, 0.85); ctx.fill(); ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1;
+  for (let k = -24; k <= 24; k++) {
+    const p0 = mproj(cam, bl + k * 0.0045, bo - 0.2), p1 = mproj(cam, bl + k * 0.0045, bo + 0.2); ctx.beginPath(); ctx.moveTo(...p0); ctx.lineTo(...p1); ctx.stroke();
+    const q0 = mproj(cam, bl - 0.12, bo + k * 0.0065), q1 = mproj(cam, bl + 0.12, bo + k * 0.0065); ctx.beginPath(); ctx.moveTo(...q0); ctx.lineTo(...q1); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 2;
+  for (const f of [0.35, 0.68]) { blob(cam, bl, bo, 0.085 * f, 0.125 * f, 9, 48); ctx.stroke(); }
+  ctx.restore();
+  blob(cam, bl, bo, 0.085, 0.125, 7, 72); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.stroke();
+  // northern towns (Otopeni, Corbeanca)
+  const tA = o.townA ?? 1;
+  if (tA > 0) {
+    ctx.save(); ctx.globalAlpha *= tA;
+    blob(cam, 44.552, 26.068, 0.008, 0.012, 21); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+    blob(cam, ...GEO.corbeanca, 0.012, 0.019, 23); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
 
-// ================================================================= ACT 1 — maps (0 → 29.6)
+// ================================================================= ACT 1 — globe → Bucharest → Corbeanca → flight (0 → 17.4)
 function globeParams(t) {
   const u = eio(P(t, 0.0, 2.6));
   return { lon0: lerp(-25, 25.6, u), lat0: lerp(14, 45.6, u), R: Math.exp(lerp(Math.log(330), Math.log(4600), eio(P(t, 0.9, 2.65)))) };
 }
 const MORPH = [2.15, 2.65];
 const camFromGlobe = g => ({ lon: g.lon0, lat: g.lat0, z: g.R * Math.cos(g.lat0 * D2R) * D2R, rot: 0 });
-function routeRot() {
-  const a = ROUTE[ROUTE.length - 3], b = ROUTE[ROUTE.length - 1];
-  return -Math.atan2(-(mercY(b[0]) - mercY(a[0])), b[1] - a[1]);
-}
 const CAM_A = (() => {
   const g = camFromGlobe(globeParams(MORPH[1]));
   return [
     { t: MORPH[1], ...g },
-    { t: 3.7, lon: 25.0, lat: 45.8, z: 150, rot: -0.08 },
-    { t: 4.9, lon: 26.1025, lat: 44.4268, z: 1500 },
-    { t: 5.5, lon: 26.1025, lat: 44.4268, z: 1650, ease: t => t },
-    { t: 8.0, lon: 26.075, lat: 44.515, z: 2700 },
-    { t: 10.25, lon: 26.068, lat: 44.523, z: 2950, ease: t => t },
+    { t: 3.7, lon: 25.0, lat: 45.8, z: 150, rot: -0.06 },
+    { t: 4.9, lon: 26.1025, lat: 44.4268, z: 2000 },
+    { t: 5.6, lon: 26.1025, lat: 44.4268, z: 2150, ease: t => t },
+    { t: 8.2, lon: 26.075, lat: 44.513, z: 2550 },
+    { t: 10.25, lon: 26.072, lat: 44.517, z: 2650, ease: t => t },
     { t: 11.4, lon: 30.4, lat: 40.0, z: 40 },
-    { t: 15.8, lon: 30.2, lat: 39.8, z: 42, ease: t => t },
-    { t: 17.9, lon: 26.072, lat: 44.580, z: 8800 },
-    { t: 22.6, lon: 26.064, lat: 44.587, z: 9400, ease: t => t },
-    { t: 24.3, lon: 26.090, lat: 44.490, z: 1350 },
-    { t: 27.6, lon: 26.088, lat: 44.494, z: 1420, ease: t => t },
-    { t: 29.6, lon: 26.0475, lat: 44.5990, z: 26000, rot: routeRot(), ease: eio },
+    { t: 17.4, lon: 30.0, lat: 39.6, z: 44, ease: t => t },
   ];
 })();
 function act1(t) {
   let cam, g = null, m = 1;
   if (t < MORPH[1]) { g = globeParams(t); cam = camFromGlobe(g); m = ss(P(t, MORPH[0], MORPH[1])); }
   else cam = track(CAM_A, t);
-  const blue = ss(P(t, 10.35, 11.3)) * (1 - ss(P(t, 16.4, 17.4)));  // flight segment is on royal blue
-  // background reveals
-  if (t > 10.3 && t < 17.6) {
-    const bu = mproj(cam, ...GEO.bucharest);
-    if (t < 16) circleReveal(C.royal, bu[0], bu[1], P(t, 10.3, 11.3));
-    else { ctx.fillStyle = rgb(C.royal); ctx.fillRect(0, 0, W, H); circleReveal(C.black, bu[0], bu[1], P(t, 16.3, 17.4)); }
-  }
-  const appear = eo(P(t, 0.05, 1.1));
-  const lz = Math.log(cam.z);
-  // ---- globe / world dots
+  const blue = ss(P(t, 10.4, 11.2));
+  const bu = mproj(cam, ...GEO.bucharest);
+  if (t > 10.3) circleReveal(C.royal, bu[0], bu[1], P(t, 10.3, 11.3));
+  const appear = eo(P(t, 0.05, 1.1)), lz = Math.log(cam.z);
   const proj = (la, lo) => {
     if (!g || m >= 1) return mproj(cam, la, lo);
-    const o = orthoProj(g, la, lo); if (o[2] < 0.02 && m < 0.5) return null;
-    if (m <= 0) return o; const q = mproj(cam, la, lo); return [lerp(o[0], q[0], m), lerp(o[1], q[1], m)];
+    const o = orthoProj(g, la, lo); if (m <= 0) return o;
+    const q = mproj(cam, la, lo); return [lerp(o[0], q[0], m), lerp(o[1], q[1], m)];
   };
   if (g && m < 1) {
-    // globe rim + soft glow
     ctx.save(); ctx.globalAlpha = appear * (1 - m);
-    const R = g.R * lerp(0.96, 1, appear);
-    const gl = ctx.createRadialGradient(W / 2, H / 2, R * 0.6, W / 2, H / 2, R * 1.25);
-    gl.addColorStop(0, 'rgba(60,70,220,0.20)'); gl.addColorStop(0.8, 'rgba(60,70,220,0.06)'); gl.addColorStop(1, 'rgba(60,70,220,0)');
-    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(W / 2, H / 2, R * 1.25, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(140,150,255,0.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(W / 2, H / 2, R, 0, 7); ctx.stroke();
+    const R = g.R * lerp(0.94, 1, appear);
+    const gl = ctx.createRadialGradient(W / 2, H / 2, R * 0.8, W / 2, H / 2, R * 1.3);
+    gl.addColorStop(0, 'rgba(60,70,220,0.25)'); gl.addColorStop(1, 'rgba(60,70,220,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(W / 2, H / 2, R * 1.3, 0, 7); ctx.fill();
+    const oc = ctx.createRadialGradient(W / 2 - R * 0.3, H / 2 - R * 0.3, R * 0.1, W / 2, H / 2, R);
+    oc.addColorStop(0, '#1a1f4a'); oc.addColorStop(1, '#0d1030');
+    ctx.fillStyle = oc; ctx.beginPath(); ctx.arc(W / 2, H / 2, R, 0, 7); ctx.fill();
     ctx.restore();
   }
-  const roHi = ss(P(t, 2.3, 3.4));
-  const coarseA = appear * (1 - ss(P(lz, Math.log(40), Math.log(90))));
-  const medA = ss(P(lz, Math.log(25), Math.log(55))) * (1 - ss(P(lz, Math.log(140), Math.log(260))));
-  const roA = ss(P(lz, Math.log(110), Math.log(200))) * (1 - ss(P(lz, Math.log(700), Math.log(1500))));
-  const dotCol = (code, q) => {
-    if (code === 1) return [mix([150, 160, 200], [255, 255, 255], roHi), 0.42 + 0.58 * roHi, 1 + 0.25 * roHi];
-    if (code === 2) return [blue > 0.5 ? [255, 255, 255] : [150, 160, 200], blue > 0.5 ? 1 : 0.45];
-    return [blue > 0.5 ? [255, 255, 255] : [150, 160, 200], blue > 0.5 ? 0.30 : lerp(0.42, 0.22, roHi)];
-  };
-  const dsz = g ? lerp(2.6, 3.4, P(g.R, 330, 1500)) : clamp(1.15 * cam.z * 0.42 * 0.18, 2, 5);
-  drawDots(D_COARSE, (la, lo) => { if (g && m < 1) { const o = orthoProj(g, la, lo); if (o[2] < 0) return null; } return proj(la, lo); }, g ? dsz * clamp(Math.sqrt(4600 / g.R), 0.5, 1) * 1.2 : 3, (c, q) => { const r = dotCol(c, q); if (g && m < 1) { const o = orthoProj(g, 0, 0); } return r; }, coarseA);
-  drawDots(D_MED, proj, clamp(0.42 * cam.z * 0.17, 1.6, 4.5), dotCol, medA);
-  drawDots(D_RO, proj, clamp(0.11 * cam.z * 0.2, 1.2, 4.5), dotCol, roA);
-  // ---- local dot field
-  const localA = ss(P(lz, Math.log(500), Math.log(1200))) * (1 - ss(P(t, 29.0, 29.6)));
-  if (localA > 0 && blue < 0.99) drawLocal(cam, localA * (1 - blue), {
-    grow: d => t > 12 ? 1 : (d[2] === 1 ? eo(P(t, 3.9 + (1 - d[3]) * 1.4 + d[4] * 0.6, 4.5 + (1 - d[3]) * 1.4 + d[4] * 0.6)) : d[2] === 0 ? 1 : eo(P(t, 6.0 + d[4] * 1.8, 6.6 + d[4] * 1.8))),
-  });
-
-  // ---- S1 Bucharest
-  const bA = win(t, 4.25, 4.7, 9.7, 10.3);
-  if (bA > 0) {
-    const [x, y] = mproj(cam, ...GEO.bucharest);
-    pin(x, y, eob(P(t, 4.25, 4.75)), bA, (t * 0.7) % 1);
-    pill('BUCHAREST', x, y + 64, { rtl: false, size: 24, weight: 800, s: eob(P(t, 4.4, 4.85)), alpha: bA });
-  }
-  // ---- S2 Corbeanca
-  const s2 = win(t, 7.4, 7.8, 10.2, 10.8);
-  if (s2 > 0) {
-    const a = mproj(cam, ...GEO.bucharest), b = mproj(cam, ...GEO.corbeanca);
-    ctx.save(); ctx.globalAlpha = s2; ctx.setLineDash([2, 10]); ctx.lineCap = 'round';
-    strokePartial([a, b], eio(P(t, 7.6, 9.3)), { strokeStyle: 'rgba(255,255,255,0.95)', lineWidth: 4, lineCap: 'round' });
+  const roHi = ss(P(t, 2.3, 3.3)) * (1 - ss(P(t, 3.75, 4.35)));
+  const worldA = appear * (1 - ss(P(lz, Math.log(700), Math.log(1800)))) * (1 - blue) + blue * (1 - ss(P(t, 16.3, 17.0)));
+  ctx.save();
+  if (g && m < 1) { ctx.beginPath(); ctx.arc(W / 2, H / 2, g.R * lerp(1, 8, m), 0, 7); ctx.clip(); }
+  drawCountries(g && m < 1 ? null : cam, proj, worldA, blue > 0.5
+    ? { land: 'rgba(255,255,255,0.16)', ro: 'rgba(255,255,255,0.42)', il: 'rgba(255,255,255,0.42)', border: 'rgba(255,255,255,0.12)', roLine: 0 }
+    : { land: '#22263f', ro: rgb(mix([34, 38, 63], C.royal, roHi)), border: 'rgba(255,255,255,0.10)', roLine: eio(P(t, 2.4, 3.8)) * (1 - ss(P(t, 4.6, 5.2))) });
+  ctx.restore();
+  // ---- Bucharest + Corbeanca schematic
+  const regA = ss(P(lz, Math.log(400), Math.log(1100))) * (1 - blue);
+  if (regA > 0) {
+    drawRegion(cam, regA, t, { greenA: ss(P(t, 6.0, 7.4)), townA: ss(P(t, 7.0, 8.4)) });
+    const fs = clamp(cam.z / 2150, 0.4, 1.2);
+    const lab = eo5(P(t, 4.25, 4.9)) * (1 - ss(P(t, 9.9, 10.4)));
+    ctx.save(); ctx.beginPath(); ctx.rect(0, bu[1] - 70 * fs, W, 140 * fs); ctx.clip();
+    text('BUCHAREST', bu[0], bu[1] + (1 - lab) * 90 * fs, { size: 78 * fs, weight: 900, spacing: 6, alpha: regA * clamp(lab * 1.5) });
     ctx.restore();
-    pin(b[0], b[1], 1.25 * eob(P(t, 9.2, 9.75)), s2, P(t, 9.6, 12) * 3 % 1);
-    pill('CORBEANCA', b[0], b[1] - 74, { rtl: false, size: 30, weight: 900, s: eob(P(t, 9.45, 9.95)), alpha: s2 });
+    // north arrow Bucharest → Corbeanca
+    const s2 = win(t, 7.4, 7.8, 10.0, 10.5);
+    if (s2 > 0) {
+      const a0 = mproj(cam, GEO.bucharest[0] + 0.088, 26.090), b0 = mproj(cam, GEO.corbeanca[0] - 0.016, GEO.corbeanca[1] + 0.004);
+      ctx.save(); ctx.globalAlpha *= s2;
+      const h = strokePartial([a0, b0], eio(P(t, 7.6, 9.2)), { strokeStyle: '#fff', lineWidth: 6, lineCap: 'round' });
+      if (h && P(t, 7.6, 9.2) > 0.05) { ctx.translate(h[0], h[1]); ctx.rotate(h[2]); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-10, -12); ctx.lineTo(-10, 12); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+      const cb = mproj(cam, ...GEO.corbeanca);
+      pin(cb[0], cb[1], 1.5 * eob(P(t, 9.15, 9.7)), s2, P(t, 9.6, 12) * 3 % 1);
+      pill('CORBEANCA', cb[0], cb[1] - 92, { rtl: false, size: 40, weight: 900, s: eob(P(t, 9.4, 9.95)), alpha: s2 });
+    }
   }
   // ---- S3 flight
-  const s3 = win(t, 10.8, 11.4, 16.0, 16.7);
+  const s3 = win(t, 10.8, 11.4, 16.0, 16.6);
   if (s3 > 0) {
-    const ta = mproj(cam, ...GEO.telaviv), bu = mproj(cam, ...GEO.bucharest);
+    const ta = mproj(cam, ...GEO.telaviv);
     const dim = ss(P(t, 13.3, 13.9));
-    ctx.save(); ctx.globalAlpha = s3 * (1 - 0.6 * dim);
+    ctx.save(); ctx.globalAlpha = s3 * (1 - 0.7 * dim);
     const N = 60, arc = [];
     const mx = (ta[0] + bu[0]) / 2, my = (ta[1] + bu[1]) / 2, dx = bu[0] - ta[0], dy = bu[1] - ta[1];
     const cx = mx + dy * 0.3, cy = my - dx * 0.3;
     for (let i = 0; i <= N; i++) { const u = i / N; arc.push([(1 - u) * (1 - u) * ta[0] + 2 * u * (1 - u) * cx + u * u * bu[0], (1 - u) * (1 - u) * ta[1] + 2 * u * (1 - u) * cy + u * u * bu[1]]); }
     const fp = eio(P(t, 11.8, 13.5));
-    strokePartial(arc, fp, { strokeStyle: 'rgba(255,255,255,1)', lineWidth: 4, lineCap: 'round' });
-    if (fp > 0 && fp < 1) { const h = strokePartial(arc, fp, { strokeStyle: 'rgba(0,0,0,0)' }); planeIcon(h[0], h[1], h[2], 2.0); }
+    strokePartial(arc, fp, { strokeStyle: '#fff', lineWidth: 5, lineCap: 'round' });
+    if (fp > 0 && fp < 1) { const h = strokePartial(arc, fp, { strokeStyle: 'rgba(0,0,0,0)' }); planeIcon(h[0], h[1], h[2], 2.2); }
     pin(ta[0], ta[1], eob(P(t, 11.0, 11.5)), 1, -1);
     pin(bu[0], bu[1], eob(P(t, 11.2, 11.7)), 1, fp >= 1 ? (t * 0.8) % 1 : -1);
-    pill('TEL AVIV', ta[0] - 120, ta[1] + 8, { rtl: false, size: 20, weight: 800, s: eob(P(t, 11.2, 11.7)) });
-    pill('BUCHAREST', bu[0] + 140, bu[1], { rtl: false, size: 20, weight: 800, s: eob(P(t, 11.35, 11.85)) });
+    pill('TEL AVIV', ta[0] - 130, ta[1] + 8, { rtl: false, size: 24, weight: 900, s: eob(P(t, 11.2, 11.7)) });
+    pill('BUCHAREST', bu[0] + 150, bu[1], { rtl: false, size: 24, weight: 900, s: eob(P(t, 11.35, 11.85)) });
     ctx.restore();
     const na = s3 * dim * (1 - ss(P(t, 15.9, 16.4)));
     if (na > 0) {
       const lift = -ei(P(t, 15.9, 16.4)) * 80;
-      rollNumber(['2', ':', '3', '0'], W / 2, H / 2 - 40 + lift, 13.35, { size: 300, now: t, alpha: na, dur: 0.9 });
-      pill('שעות טיסה', W / 2, H / 2 + 150 + lift, { size: 34, weight: 800, s: eob(P(t, 13.9, 14.4)), alpha: na, icon: (x, y, s) => planeIcon(x, y, -Math.PI / 4, s / 30, rgb(C.royal)) });
+      rollNumber(['2', ':', '3', '0'], W / 2, H / 2 - 40 + lift, 13.35, { size: 320, now: t, alpha: na, dur: 0.9 });
+      pill('שעות טיסה', W / 2, H / 2 + 165 + lift, { size: 38, weight: 800, s: eob(P(t, 13.9, 14.4)), alpha: na, icon: (x, y, s) => planeIcon(x, y, -Math.PI / 4, s / 30, rgb(C.royal)) });
     }
   }
-  // ---- S4 OTP → Corbeanca, DN1, A0
-  const s4 = win(t, 16.6, 17.2, 29.3, 29.9);
-  if (s4 > 0) {
-    ctx.save(); ctx.globalAlpha = s4;
-    const zt = ss(P(lz, Math.log(60), Math.log(3000)));
-    const bu = mproj(cam, ...GEO.bucharest), ot = mproj(cam, ...GEO.otp);
-    const x = lerp(bu[0], ot[0], zt), y = lerp(bu[1], ot[1], zt);
-    const rp = mapPts(cam, ROUTE);
-    const fr = eio(P(t, 18.9, 22.5));
-    const endFade = 1 - ss(P(t, 27.5, 28.3));
-    strokePartial(rp, 1, { strokeStyle: `rgba(255,255,255,${0.12 * ss(P(t, 18.6, 19.2)) * endFade})`, lineWidth: 14, lineCap: 'round', lineJoin: 'round' });
-    const head = strokePartial(rp, fr, { strokeStyle: rgb(C.royalHi), lineWidth: 7, lineCap: 'round', lineJoin: 'round', shadowColor: 'rgba(92,108,255,0.9)', shadowBlur: 22 });
-    if (head && fr > 0.01 && fr < 0.995) { ctx.save(); ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(255,255,255,0.9)'; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(head[0], head[1], 9, 0, 7); ctx.fill(); ctx.restore(); }
-    // DN1 + A0
-    const rf = 1 - ss(P(t, 27.9, 28.6));
-    strokePartial(mapPts(cam, DN1), eio(P(t, 24.4, 26.0)), { strokeStyle: `rgba(255,255,255,${rf})`, lineWidth: 5, lineCap: 'round', lineJoin: 'round' });
-    const a0 = []; for (let i = 0; i <= 80; i++) a0.push(mproj(cam, ...a0pt(Math.PI * 0.98 + Math.PI * 1.04 * i / 80)));
-    strokePartial(a0, eio(P(t, 25.3, 27.4)), { strokeStyle: rgb(C.royalHi, rf), lineWidth: 5, lineCap: 'round', lineJoin: 'round', shadowColor: 'rgba(92,108,255,0.8)', shadowBlur: 14 });
-    const dnL = mproj(cam, 44.512, 26.079), a0L = mproj(cam, ...a0pt(Math.PI * 1.5));
-    pill('DN1', dnL[0] + 70, dnL[1], { rtl: false, size: 26, weight: 900, s: eob(P(t, 24.9, 25.35)), alpha: rf });
-    pill('A0', a0L[0], a0L[1] - 46, { rtl: false, size: 26, weight: 900, bg: rgb(C.royalHi), color: '#fff', s: eob(P(t, 25.7, 26.15)), alpha: rf });
-    // destination
-    const cb = mproj(cam, ...GEO.corbeanca);
-    pin(cb[0], cb[1], 1.2 * eob(P(t, 18.4, 18.9)), endFade, P(t, 22.4, 26) * 2 % 1);
-    pill('CORBEANCA', cb[0], cb[1] - 64, { rtl: false, size: 24, weight: 900, s: eob(P(t, 18.6, 19.1)), alpha: endFade });
-    // distance
-    const mid = rp[3];
-    const kA = win(t, 19.8, 20.2, 23.6, 24.2);
-    if (kA > 0) pill('כ-6 ק״מ', mid[0] + 150, mid[1] - 10, { size: 34, weight: 900, s: eob(P(t, 19.8, 20.3)) * (1 - ei(P(t, 23.6, 24.2))), alpha: kA, bg: rgb(C.royalHi), color: '#fff' });
-    // airport chip
-    const morph = eo(P(t, 17.0, 17.8)), oA = 1 - ss(P(t, 27.5, 28.2));
-    if (morph < 1) { ctx.fillStyle = `rgba(255,255,255,${1 - morph})`; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill(); }
-    if (morph > 0) {
-      const sc = eob(morph) * oA;
-      ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
-      ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 6;
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 36, 0, 7); ctx.fill(); ctx.shadowColor = 'transparent';
-      planeIcon(0, 0, -Math.PI / 4, 1.5, rgb(C.royal));
-      ctx.restore();
-      pill('OTP', x, y + 74, { rtl: false, size: 26, weight: 900, s: eob(P(t, 17.3, 17.8)) * oA, bg: '#fff' });
+}
+
+// ================================================================= ACT 1b — airport, the drive, DN1 / A0, connections (16.3 → 29.8)
+const VP = [W / 2, 470];                                         // vanishing point of the road
+function roadY(z) { return VP[1] + (H + 60 - VP[1]) * (2.2 / z); }
+function roadX(xw, z) { return VP[0] + xw * (2.2 / z) * 210; }
+function drawRoad(t, a, dist) {
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a;
+  const sky = ctx.createLinearGradient(0, 0, 0, VP[1]); sky.addColorStop(0, rgb(C.black)); sky.addColorStop(1, rgb([24, 28, 90]));
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, VP[1]);
+  ctx.fillStyle = rgb([12, 13, 22]); ctx.fillRect(0, VP[1], W, H - VP[1]);
+  const glow = ctx.createRadialGradient(VP[0], VP[1], 0, VP[0], VP[1], 700); glow.addColorStop(0, 'rgba(92,108,255,0.35)'); glow.addColorStop(1, 'rgba(92,108,255,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  // asphalt
+  const zn = 2.2, zf = 120;
+  ctx.fillStyle = '#1b1d2c'; ctx.beginPath(); ctx.moveTo(roadX(-4, zn), roadY(zn)); ctx.lineTo(roadX(-4, zf), roadY(zf)); ctx.lineTo(roadX(4, zf), roadY(zf)); ctx.lineTo(roadX(4, zn), roadY(zn)); ctx.fill();
+  // edge lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4;
+  for (const e of [-3.7, 3.7]) { ctx.beginPath(); ctx.moveTo(roadX(e, zn), roadY(zn)); ctx.lineTo(roadX(e, zf), roadY(zf)); ctx.stroke(); }
+  // centre dashes moving towards the camera
+  ctx.fillStyle = '#fff';
+  for (let s = Math.floor(dist / 6) * 6; s < dist + zf; s += 6) {
+    const z0 = s - dist, z1 = z0 + 2.6; if (z1 < zn) continue;
+    const a0 = Math.max(z0, zn);
+    ctx.beginPath(); ctx.moveTo(roadX(-0.12, a0), roadY(a0)); ctx.lineTo(roadX(0.12, a0), roadY(a0)); ctx.lineTo(roadX(0.12, z1), roadY(z1)); ctx.lineTo(roadX(-0.12, z1), roadY(z1)); ctx.fill();
+  }
+  // light posts on both sides
+  for (let s = Math.floor(dist / 9) * 9; s < dist + zf; s += 9) {
+    const z = s - dist; if (z < zn + 0.4) continue;
+    for (const side of [-1, 1]) {
+      const x = roadX(side * 5.2, z), y = roadY(z), hpx = 3.2 * (2.2 / z) * 210;
+      ctx.strokeStyle = `rgba(255,255,255,${clamp(0.75 - z / 160)})`; ctx.lineWidth = Math.max(1, 12 / z);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - hpx); ctx.lineTo(x - side * hpx * 0.18, y - hpx); ctx.stroke();
+      ctx.fillStyle = `rgba(255,220,160,${clamp(0.9 - z / 140)})`; ctx.beginPath(); ctx.arc(x - side * hpx * 0.18, y - hpx, Math.max(1.5, 30 / z), 0, 7); ctx.fill();
     }
+  }
+  ctx.restore();
+}
+function roadSign(label, side, z, col, a) {
+  if (a <= 0 || z < 2.3) return;
+  const k = 2.2 / z, x = roadX(side * 5.6, z), y = roadY(z);
+  const w = 420 * k * 1.6, h = 230 * k * 1.6, top = y - 760 * k;
+  ctx.save(); ctx.globalAlpha *= a;
+  ctx.fillStyle = '#9aa0b4'; ctx.fillRect(x - 6 * k, top + h, 12 * k, y - top - h);
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 30 * k;
+  ctx.fillStyle = col; rr(x - w / 2, top, w, h, 26 * k); ctx.fill(); ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 7 * k; rr(x - w / 2 + 12 * k, top + 12 * k, w - 24 * k, h - 24 * k, 18 * k); ctx.stroke();
+  text(label, x, top + h / 2 + 4 * k, { size: 150 * k, weight: 900, color: '#fff' });
+  ctx.restore();
+}
+function act1b(t) {
+  const a = ss(P(t, 16.3, 16.9)) * (1 - ss(P(t, 29.4, 29.9)));
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  // black takes over from the blue flight scene through the Bucharest point
+  circleReveal(C.black, 1180, 330, P(t, 16.3, 17.2));
+  // ---- the road
+  const dist = 60 * eio(P(t, 18.8, 22.6)) + Math.max(0, t - 22.6) * 9 + Math.max(0, Math.min(t, 18.8) - 18.0) * 2;
+  const roadA = ss(P(t, 18.3, 19.1)) * (1 - ss(P(t, 26.4, 27.2)));
+  if (roadA > 0) {
+    ctx.save(); ctx.beginPath(); const rv = eio(P(t, 18.3, 19.2)); ctx.rect(0, VP[1] - VP[1] * rv, W, H * rv + 10); ctx.clip();
+    drawRoad(t, roadA, dist);
+    roadSign('DN1', 1, lerp(70, 4.2, eo5(P(t, 24.6, 25.6))), '#1f4fd1', ss(P(t, 24.6, 24.9)) * (1 - ss(P(t, 26.4, 26.9))));
+    roadSign('A0', -1, lerp(70, 4.6, eo5(P(t, 25.3, 26.3))), '#14894d', ss(P(t, 25.3, 25.6)) * (1 - ss(P(t, 26.4, 26.9))));
     ctx.restore();
   }
+  // ---- airport chip: draws itself, then docks at the start of the progress track
+  const dock = eio(P(t, 18.5, 19.3));
+  const chipA = ss(P(t, 16.9, 17.2)) * (1 - ss(P(t, 23.2, 23.8)));
+  const tx0 = 420, tx1 = 1500, ty = 960;
+  if (chipA > 0) {
+    const cx = lerp(W / 2, tx0, dock), cy = lerp(500, ty, dock), sc = lerp(1, 0.38, dock);
+    ctx.save(); ctx.globalAlpha *= chipA; ctx.translate(cx, cy); ctx.scale(sc, sc);
+    const draw = eio(P(t, 16.9, 17.5)), fill = eo(P(t, 17.3, 17.7));
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, 120, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * draw); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 120 * fill, 0, 7); ctx.fill();
+    const pl = eob(P(t, 17.4, 17.95));
+    if (pl > 0) planeIcon(0, 0, lerp(-Math.PI, -Math.PI / 4, eo(P(t, 17.4, 18.0))), 4.2 * pl, rgb(C.royal));
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha *= chipA * (1 - dock);
+    kinetic('OTP', W / 2, 720, 17.55, { now: t, size: 120, weight: 900 });
+    ctx.restore();
+  }
+  // ---- progress track OTP → CORBEANCA with distance counter
+  const trA = ss(P(t, 18.8, 19.3)) * (1 - ss(P(t, 23.2, 23.8)));
+  if (trA > 0) {
+    ctx.save(); ctx.globalAlpha *= trA;
+    const f = eio(P(t, 18.9, 22.5)), w0 = eo5(P(t, 18.8, 19.5));
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(tx0, ty - 4, (tx1 - tx0) * w0, 8, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; rr(tx0, ty - 4, (tx1 - tx0) * f, 8, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(255,255,255,0.9)'; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(tx0 + (tx1 - tx0) * f, ty, 13, 0, 7); ctx.fill(); ctx.shadowColor = 'transparent';
+    pin(tx1, ty, eob(P(t, 19.1, 19.6)), 1, f >= 1 ? (t * 0.9) % 1 : -1);
+    pill('OTP', tx0, ty - 92, { rtl: false, size: 26, weight: 900, s: eob(P(t, 19.0, 19.4)) });
+    pill('CORBEANCA', tx1, ty - 70, { rtl: false, size: 26, weight: 900, s: eob(P(t, 19.2, 19.6)), bg: f >= 1 ? rgb(C.royalHi) : '#fff', color: f >= 1 ? '#fff' : rgb(C.royal) });
+    ctx.restore();
+    const ka = ss(P(t, 19.6, 19.9)) * (1 - ss(P(t, 23.0, 23.5)));
+    if (ka > 0) rollNumber(['ק״מ', ' ', '6', '-', 'כ'], W / 2, 210 - ei(P(t, 23.0, 23.5)) * 60, 19.7, { size: 180, now: t, alpha: ka, dur: 0.8 });
+  }
+  // ---- connections: Corbeanca hub → the capital and other cities
+  const net = ss(P(t, 26.4, 27.0));
+  if (net > 0) {
+    ctx.save(); ctx.globalAlpha *= net;
+    const flat = eio(P(t, 28.7, 29.6));
+    const c = [W / 2, 470];
+    const nodes = [[W / 2 + 40, 900, 'BUCHAREST', 27.0], [380, 260, '', 27.3], [1580, 230, '', 27.45], [250, 700, '', 27.6], [1700, 640, '', 27.75], [1010, 120, '', 27.9]];
+    for (const [nx, ny, label, ts] of nodes) {
+      const p0 = [lerp(c[0], -100, flat), lerp(c[1], 820, flat)], p1 = [lerp(nx, W + 100, flat), lerp(ny, 820, flat)];
+      strokePartial([p0, p1], eio(P(t, ts, ts + 0.7)), { strokeStyle: `rgba(255,255,255,${label ? 0.95 : 0.55})`, lineWidth: label ? 6 : 3, lineCap: 'round' });
+      const f = P(t, ts + 0.5, 30);
+      if (flat < 0.3 && P(t, ts, ts + 0.7) >= 1) for (const k of [0, 0.33, 0.66]) { const u = (f * 1.6 + k) % 1; ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - flat * 3)})`; ctx.beginPath(); ctx.arc(lerp(p0[0], p1[0], u), lerp(p0[1], p1[1], u), 5, 0, 7); ctx.fill(); }
+      const na = (1 - flat) * eob(P(t, ts + 0.5, ts + 0.9));
+      if (na > 0) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(nx, ny, (label ? 16 : 10) * na, 0, 7); ctx.fill(); }
+      if (label) pill(label, nx, ny - 60, { rtl: false, size: 30, weight: 900, s: eob(P(t, ts + 0.4, ts + 0.8)) * (1 - flat) });
+    }
+    pin(c[0], c[1], 1.6 * eob(P(t, 26.5, 27.0)) * (1 - flat), 1 - flat, (t * 0.8) % 1);
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 // ================================================================= ELEVATION ARCHITECTURE
@@ -592,6 +673,17 @@ function act2(t) {
   // the horizon line itself (continuation of the drive route)
   const lw = lerp(7, 2, P(t, 29.5, 30.6)) * (1 - lift);
   ctx.fillStyle = rgb(mix(C.royalHi, C.white, P(t, 29.6, 30.4)), 0.9 * (1 - open * 0.6)); ctx.fillRect(0, by - lw / 2, W, lw);
+  // ---- families · businesspeople · entrepreneurs: icon chips over the street
+  const chipOut = eio(P(t, 40.0, 40.5));
+  [[familyGlyph, 38.55], [briefcaseGlyph, 39.15], [bulbGlyph, 39.75]].forEach(([fn, ts], i) => {
+    const e = eob(P(t, ts, ts + 0.5)); if (e <= 0 || chipOut >= 1) return;
+    const x = W / 2 + (1 - i) * 260, y = 330 - chipOut * 500;
+    ctx.save(); ctx.translate(x, y); ctx.scale(e, e); if (chipOut > 0) ctx.filter = `blur(${chipOut * 14}px)`;
+    ctx.shadowColor = 'rgba(0,0,30,0.35)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 92, 0, 7); ctx.fill(); ctx.shadowColor = 'transparent';
+    fn(0, 2, 2.4, rgb(C.royal));
+    ctx.restore();
+  });
   // ---- split screen: dense city vs Corbeanca
   const sp = eio(P(t, 40.2, 40.9)) * (1 - eio(P(t, 42.4, 43.2)));
   if (sp > 0) {
@@ -606,143 +698,195 @@ function act2(t) {
   ctx.restore();
 }
 
-// ================================================================= ACT 3 — shopping (44.6 → 60.6)
-// light UI map inside a white card. Map space: Corbeanca area, projected into the card.
-function cardMap(cam, cx, cy, w, h, t, o) {
-  ctx.save(); rr(cx - w / 2, cy - h / 2, w, h, 34); ctx.clip();
-  ctx.fillStyle = '#eef0f6'; ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
-  // green patches
-  ctx.fillStyle = '#d6eedd';
-  for (const [la, lo, rl, ro] of [[44.612, 26.020, 0.012, 0.018], [44.628, 26.050, 0.010, 0.018], [44.582, 26.018, 0.010, 0.016], [44.645, 26.070, 0.012, 0.018]]) {
-    const a = mproj(cam, la, lo), r = rl * cam.z * 1.2; ctx.beginPath(); ctx.ellipse(a[0], a[1], r * 1.3, r, 0, 0, 7); ctx.fill();
-  }
-  const roads = [DN1, ROUTE, [[44.585, 26.000], [44.592, 26.020], [44.598, 26.040], [44.604, 26.060], [44.610, 26.085]], [[44.575, 26.030], [44.589, 26.045], [44.603, 26.050], [44.620, 26.055]], [[44.560, 26.010], [44.575, 26.030]]];
-  roads.forEach((rd, i) => {
-    const pts = mapPts(cam, rd);
-    strokePartial(pts, 1, { strokeStyle: '#d5d9e6', lineWidth: i === 0 ? 22 : 14, lineCap: 'round', lineJoin: 'round' });
-    strokePartial(pts, 1, { strokeStyle: '#ffffff', lineWidth: i === 0 ? 16 : 9, lineCap: 'round', lineJoin: 'round' });
-  });
-  const dn = mproj(cam, 44.60, 26.081);
-  pill('DN1', dn[0] + 44, dn[1], { rtl: false, size: 18, weight: 900, bg: '#ffd84d', color: '#222', alpha: o.dnA ?? 1 });
+// ================================================================= ACT 3 — shopping → DN1 Value Centre → numbers (44.6 → 60.6)
+const BRAND = {}; for (const [k, d] of Object.entries(window.BRAND_PATHS || {})) BRAND[k] = new Path2D(d);
+// official mark (24×24 Simple Icons path) with a stroke-draw → fill build, like a logo reveal
+function brandMark(k, x, y, size, col, build = 1, a = 1) {
+  const p = BRAND[k]; if (!p || a <= 0) return;
+  ctx.save(); ctx.globalAlpha *= a; ctx.translate(x - size / 2, y - size / 2); ctx.scale(size / 24, size / 24);
+  if (build < 1) { ctx.strokeStyle = col; ctx.lineWidth = 0.35; ctx.setLineDash([140 * clamp(build * 1.6), 400]); ctx.stroke(p); ctx.setLineDash([]); }
+  ctx.globalAlpha *= clamp((build - 0.45) / 0.55); ctx.fillStyle = col; ctx.fill(p, 'evenodd');
   ctx.restore();
 }
-const CAM_C = [
-  { t: 44.6, lon: 26.047, lat: 44.598, z: 40000 },
-  { t: 46.5, lon: 26.048, lat: 44.598, z: 27000, ease: eo },
-  { t: 50.5, lon: 26.046, lat: 44.597, z: 25000 },
-  { t: 53.6, lon: 26.046, lat: 44.597, z: 24000, ease: t => t },
-];
-const STORES = [['Lidl', GEO.lidl, 51.45, '#0050aa'], ['Mega Image', GEO.mega, 52.15, '#e30613'], ['Penny', GEO.penny, 52.85, '#cd1414']];
+function bagGlyph(x, y, s, col, draw = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.strokeStyle = col; ctx.lineWidth = 3.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.setLineDash([200 * draw, 400]);
+  ctx.beginPath(); ctx.moveTo(-15, -8); ctx.lineTo(15, -8); ctx.lineTo(17, 18); ctx.lineTo(-17, 18); ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-8, -13); ctx.quadraticCurveTo(-8, -20, 0, -20); ctx.quadraticCurveTo(8, -20, 8, -13); ctx.lineTo(8, -8); ctx.stroke();
+  ctx.restore();
+}
+const SUPER = [['lidl', 'Lidl', 51.45, '#0050aa'], ['mega', 'Mega Image', 52.15, '#14162a'], ['penny', 'Penny', 52.85, '#cd1414']];
+const VC_BRANDS = [['carrefour', 'Carrefour'], ['dm', 'dm'], ['', 'NEW YORKER'], ['', 'C&A'], ['', 'Deichmann'], ['', 'JYSK'], ['', 'PEPCO'], ['', 'CCC']];
 function act3(t) {
-  const a = ss(P(t, 44.6, 45.2)) * (1 - ss(P(t, 60.3, 60.8)));
+  const a = ss(P(t, 44.6, 45.2)) * (1 - ss(P(t, 60.4, 60.9)));
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a;
-  ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
-  const enter = eo5(P(t, 44.8, 45.9));
-  const swap = eio(P(t, 53.45, 54.25));          // map → Value Centre (horizontal slide inside the card)
-  const flat = eio(P(t, 57.2, 58.0));            // card flattens into a line
-  const spread = eio(P(t, 57.9, 59.0));          // the line splits into the chart grid
-  const cw = lerp(1100, 1560, enter) * lerp(1, 1.25, flat), ch = lerp(600, 860, enter) * lerp(1, 0, flat);
-  const cx = W / 2, cy = H / 2 + 20 + (1 - enter) * 140;
-  if (spread > 0) {
-    // blue opens from the centre line, lines travel to the grid rows of act 4
-    const bh = H * spread;
-    ctx.fillStyle = rgb(C.royal); ctx.fillRect(0, H / 2 - bh / 2, W, bh);
-    for (let i = 0; i < 4; i++) { const f = eio(P(t, 57.9 + i * 0.08, 58.9 + i * 0.08)); const y = lerp(H / 2, 300 + i * 150, f), w = lerp(cw, W + 400, f); ctx.fillStyle = `rgba(255,255,255,${lerp(1, 0.35, f)})`; ctx.fillRect(W / 2 - w / 2, y - 1, w, lerp(4, 1.5, f)); }
-  }
-  if (ch > 2) {
-    ctx.save(); if (enter < 1) ctx.filter = `blur(${(1 - enter) * 12}px)`;
-    card(cx - cw / 2, cy - ch / 2, cw, ch, { r: lerp(34, 4, flat) }); ctx.restore();
-    ctx.save(); rr(cx - cw / 2, cy - ch / 2, cw, ch, lerp(34, 4, flat)); ctx.clip();
-    const cam = track(CAM_C, t);
-    // map page
-    if (swap < 1) {
-      const camIn = { ...cam, z: cam.z * (cw / 1560), ox: -swap * cw, oy: cy - H / 2 };
-      cardMap(camIn, cx - swap * cw, cy, cw, ch, t, {});
-      const pm = mproj(camIn, ...GEO.corbeanca);
-      pin(pm[0], pm[1], 1.5 * eob(P(t, 45.4, 45.9)), 1, (t * 0.6) % 1, rgb(C.royal));
-      STORES.forEach(([name, ll, tl, c1], i) => {
-        const sp = mproj(camIn, ...ll);
-        const ca = ss(P(t, 46.0 + i * 0.3, 46.4 + i * 0.3)); if (ca <= 0) return;
-        ctx.save(); ctx.globalAlpha *= ca; ctx.setLineDash([2, 12]);
-        strokePartial([pm, sp], eio(P(t, 46.2 + i * 0.3, 47.1 + i * 0.3)), { strokeStyle: rgb(C.royal, 0.8), lineWidth: 5, lineCap: 'round' });
-        ctx.restore();
-        const lg = P(t, tl - 0.2, tl + 0.35), cs = eob(P(t, 46.0 + i * 0.3, 46.5 + i * 0.3)) * (1 - eo(lg));
-        if (cs > 0.01) { ctx.save(); ctx.globalAlpha *= ca; ctx.strokeStyle = rgb(C.royal); ctx.lineWidth = 5; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(sp[0], sp[1], 22 * cs, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore(); }
-        if (lg > 0) pill(name, sp[0], sp[1], { rtl: false, size: 38, weight: 900, color: '#14162a', dot: c1, s: eob(lg), alpha: ca });
-      });
-    }
-    // Value Centre page
-    if (swap > 0) {
-      const ox = (1 - swap) * cw;
-      ctx.save(); ctx.translate(ox, 0);
-      const sk = ctx.createLinearGradient(0, cy - ch / 2, 0, cy + ch / 2); sk.addColorStop(0, '#e4e8ff'); sk.addColorStop(1, '#f7f8fc');
-      ctx.fillStyle = sk; ctx.fillRect(cx - cw / 2, cy - ch / 2, cw, ch);
-      const s = cw / 1560, gy = cy + ch * 0.22;
-      ctx.fillStyle = '#d9dcea'; ctx.fillRect(cx - cw / 2, gy, cw, ch);
-      for (let i = 0; i < 24; i++) { const f = P(t, 54.6 + i * 0.02, 55.0 + i * 0.02); ctx.fillStyle = `rgba(255,255,255,${f})`; ctx.fillRect(cx - cw / 2 + 90 * s + i * 58 * s, gy + 50 * s, 7 * s, 90 * s); }
-      const units = [['#262ca8', 1.0], ['#e34b4b', 0.85], ['#14162a', 1.18], ['#3fae7a', 0.9], ['#f2b632', 1.0], ['#262ca8', 0.85], ['#8a5cf6', 1.12], ['#14162a', 0.95]];
-      const uw = 172 * s, k0 = 1 - eio(P(t, 56.9, 57.5));
-      units.forEach(([col, hf], i) => {
-        const g = eo5(P(t, 54.1 + i * 0.08, 54.7 + i * 0.08)) * k0;
-        const x0 = cx - units.length * uw / 2 + i * uw, hh = 250 * s * hf * g;
-        if (hh <= 0) return;
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(x0 + 3 * s, gy - hh, uw - 6 * s, hh);
-        ctx.fillStyle = col; ctx.fillRect(x0 + 3 * s, gy - hh, uw - 6 * s, 40 * s * g);
-        ctx.fillStyle = `rgba(30,40,80,${0.16 + 0.08 * (i % 2)})`; ctx.fillRect(x0 + 18 * s, gy - hh + 64 * s, uw - 36 * s, hh - 64 * s);
-        const aw = P(t, 54.8 + i * 0.07, 55.2 + i * 0.07);
-        if (g < 0.5) return; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x0 + 10 * s, gy - hh + 60 * s); ctx.lineTo(x0 + uw - 10 * s, gy - hh + 60 * s); ctx.lineTo(x0 + uw - 2 * s, gy - hh + (60 + 30 * aw) * s); ctx.lineTo(x0 + 2 * s, gy - hh + (60 + 30 * aw) * s); ctx.fill();
-      });
-      for (const [i, k] of [[-1, 0.2], [units.length, 0.6]]) tree(cx - units.length * uw / 2 + i * uw + uw / 2, gy, 46 * s, P(t, 55.0 + k, 55.6 + k) * k0, { k, tall: true });
-      ctx.restore();
-      kinetic('CENTRE VALUE DN1', cx + ox, cy - ch / 2 + 120 * s, 54.5, { now: t, size: 88 * s, weight: 900, color: '#14162a', out: 56.8 });
-    }
+  // royal blue rises from the bottom as the street scene lifts away
+  ctx.fillStyle = rgb(C.royal); ctx.fillRect(0, H * (1 - eio(P(t, 44.6, 45.3))), W, H);
+  // ---- S7 shopping nearby: bag icon + proximity rings
+  const bagOut = eio(P(t, 48.2, 49.0));
+  const bA = ss(P(t, 45.0, 45.3)) * (1 - ss(P(t, 53.2, 53.7)));
+  if (bA > 0) {
+    const bx = W / 2, by = lerp(500, 210, bagOut), bs = lerp(1, 0.5, bagOut);
+    ctx.save(); ctx.globalAlpha *= bA;
+    for (const k of [0, 0.33, 0.66]) { const p = (P(t, 46.4, 60) * 2.2 + k) % 1; const ra = (1 - bagOut) * ss(P(t, 46.4, 46.8)); ctx.strokeStyle = `rgba(255,255,255,${0.45 * (1 - p) * ra})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(bx, by, 150 + 360 * p, 0, 7); ctx.stroke(); }
+    const sc = eob(P(t, 45.0, 45.6)) * bs;
+    ctx.translate(bx, by); ctx.scale(sc, sc);
+    ctx.shadowColor = 'rgba(0,0,30,0.4)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 14;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 140, 0, 7); ctx.fill(); ctx.shadowColor = 'transparent';
+    bagGlyph(0, 6, 3.4, rgb(C.royal), eio(P(t, 45.3, 46.2)));
     ctx.restore();
   }
+  // ---- S8a supermarket icons (no map): white app-style tiles, logos land on the spoken names
+  const tOut = eio(P(t, 53.3, 53.9));
+  SUPER.forEach(([k, name, tl, col], i) => {
+    const x = W / 2 + (1 - i) * 400;                         // RTL: first named on the right
+    const ent = eo5(P(t, 48.5 + i * 0.12, 49.3 + i * 0.12));
+    if (ent <= 0) return;
+    const y = 560 + (1 - ent) * 500 - tOut * 900, sz = 270;
+    const vel = (1 - ent) * 16 + tOut * (1 - tOut) * 40;
+    ctx.save(); if (vel > 0.5) ctx.filter = `blur(${vel}px)`;
+    card(x - sz / 2, y - sz / 2, sz, sz, { r: 62 });
+    const lg = P(t, tl - 0.15, tl + 0.4);
+    if (lg <= 0) { // loading skeleton
+      const sh = (t * 1.2 + i * 0.2) % 1;
+      ctx.fillStyle = '#eceef6'; rr(x - 70, y - 20, 140, 40, 20); ctx.fill();
+      const g = ctx.createLinearGradient(x - 70 + 220 * sh - 60, 0, x - 70 + 220 * sh + 60, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; rr(x - 70, y - 20, 140, 40, 20); ctx.fill();
+    } else {
+      const s = eob(lg);
+      ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+      if (BRAND[k]) brandMark(k, 0, 0, 170, col, 1, clamp(lg * 2));
+      else { text('Mega', 0, -26, { size: 62, weight: 900, color: col, alpha: clamp(lg * 2) }); text('Image', 0, 34, { size: 50, weight: 700, color: col, alpha: clamp(lg * 2) }); }
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(x - 250, y + sz / 2 + 20, 500, 90); ctx.clip();
+    const nl = expo(P(t, tl, tl + 0.5));
+    text(name, x, y + sz / 2 + 62 + (1 - nl) * 70, { size: 46, weight: 900, alpha: nl * (1 - tOut) });
+    ctx.restore();
+  });
+  // ---- S8b DN1 Value Centre: black panel slides up, title, international brand grid
+  const pan = eio(P(t, 53.3, 54.0));
+  if (pan > 0) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, H * (1 - pan), W, H * pan); ctx.clip();
+    ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
+    const out = eio(P(t, 57.4, 58.2));
+    ctx.save(); ctx.globalAlpha *= 1 - out;
+    kinetic('CENTRE VALUE DN1', W / 2, 200, 53.75, { now: t, size: 104, weight: 900 });
+    const line = eio(P(t, 54.2, 54.9)); ctx.fillStyle = rgb(C.royalHi); ctx.fillRect(W / 2 - 230 * line, 285, 460 * line, 5);
+    ctx.restore();
+    const cols = 4, tw = 360, th = 190, gx = 34, gy = 34;
+    VC_BRANDS.forEach(([k, name], i) => {
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = W / 2 + (1.5 - c) * (tw + gx), y = 520 + r * (th + gy);   // RTL order
+      const ts = 54.3 + i * 0.11;
+      const e = eo5(P(t, ts, ts + 0.7));
+      if (e <= 0) return;
+      const col2 = P(t, 57.4 + i * 0.03, 58.1 + i * 0.03);
+      const shrink = eio(col2);
+      const w = lerp(tw, 10, shrink), h = lerp(th, 10, shrink);
+      const yy = y + (1 - e) * 160;
+      ctx.save(); ctx.globalAlpha *= clamp(e * 1.4) * (1 - ss(P(col2, 0.7, 1)));
+      if (e < 1) ctx.filter = `blur(${(1 - e) * 14}px)`;
+      ctx.fillStyle = '#171a2e'; rr(x - w / 2, yy - h / 2, w, h, lerp(30, 5, shrink)); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+      if (shrink < 0.4) {
+        const ca = clamp(e * 1.5) * (1 - shrink * 2.5);
+        if (k) brandMark(k, x, yy, k === 'dm' ? 120 : 110, '#fff', P(t, ts + 0.2, ts + 1.3), ca);
+        else {
+          font(48, 900); const fw = ctx.measureText(name).width; const fsz = Math.min(48, 48 * 280 / fw);
+          ctx.save(); ctx.beginPath(); ctx.rect(x - tw / 2, yy - th / 2, tw, th); ctx.clip();
+          const u = expo(P(t, ts + 0.25, ts + 0.85));
+          text(name, x, yy + (1 - u) * 60, { size: fsz, weight: 900, alpha: ca * u, spacing: name.length < 5 ? 4 : 1 });
+          ctx.restore();
+        }
+      }
+    });
+    // ---- S9 the numbers: perspective data matrix (as in the reference)
+    const mA = ss(P(t, 57.9, 58.5));
+    if (mA > 0) drawMatrix(t, mA);
+    ctx.restore();
+  }
+  // hand-off to the data act: royal blue opens from the centre line
+  const op = eio(P(t, 59.9, 60.6));
+  if (op > 0) { ctx.fillStyle = rgb(C.royal); ctx.fillRect(0, H / 2 - H / 2 * op, W, H * op); }
+  ctx.restore();
+}
+const MATRIX = (() => { const r = rng(17), cells = []; for (let row = 0; row < 52; row++) for (let col = -6; col <= 6; col++) { const v = (r() * 9000 + 100).toFixed(r() < 0.5 ? 2 : 0); cells.push({ row, col, v: Number(v).toLocaleString('en-US', { minimumFractionDigits: v.includes('.') ? 2 : 0 }), g: r() < 0.12, k: r() }); } return cells; })();
+function drawMatrix(t, a) {
+  ctx.save(); ctx.globalAlpha *= a;
+  const scroll = (t - 57.9) * 7 + ei(P(t, 59.2, 60.4)) * 40;
+  const hy = 150;
+  for (const c of MATRIX) {
+    const z = ((c.row * 2.2 - scroll) % 114 + 114) % 114, sc = 4 / (z + 4);
+    const y = hy + 900 * sc, x = W / 2 + (c.col + (c.row % 2) * 0.5) * 310 * sc;
+    if (y < hy || y > H + 40 || x < -200 || x > W + 200) continue;
+    const al = clamp(1.4 - z / 70) * (0.35 + 0.65 * c.k);
+    text(c.v, x, y, { size: Math.max(6, 64 * sc), weight: 700, color: c.g ? '#46d38a' : '#fff', alpha: al });
+  }
+  // depth fade toward the horizon
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.55); g.addColorStop(0, rgb(C.black)); g.addColorStop(1, 'rgba(8,9,14,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.55);
   ctx.restore();
 }
 
 // ================================================================= ACT 4 — data (59.6 → 79.8)
-const NB = (() => { const r = rng(99), out = []; for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 13; gx++) { if (r() < 0.15) continue; out.push({ x: 180 + gx * 128 + (r() - 0.5) * 30, y: 300 + gy * 150 + 75, wave: Math.min(2, Math.floor(gx / 4.5)), k: r() }); } return out; })();
 function act4(t) {
-  const a = ss(P(t, 59.0, 59.6)) * (1 - ss(P(t, 79.4, 79.9)));
+  const a = ss(P(t, 60.45, 60.6)) * (1 - ss(P(t, 79.4, 79.9)));
   if (a <= 0) return;
   ctx.save(); ctx.globalAlpha = a;
   // ---- backgrounds
   ctx.fillStyle = rgb(C.royal); ctx.fillRect(0, 0, W, H);
-  // ---- S10 development: grid → houses appearing → growth line
-  const s10 = 1 - ss(P(t, 64.3, 65.0));
-  if (s10 > 0) {
-    ctx.save(); ctx.globalAlpha *= s10;
-    for (let i = 0; i < 4; i++) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-200, 300 + i * 150, W + 400, 1.5); }
-    const gather = eio(P(t, 63.6, 64.6));
-    for (const b of NB) {
-      const st = 60.6 + b.wave * 0.95 + b.k * 0.5;
-      const g = eob(P(t, st, st + 0.45)); if (g <= 0) continue;
-      const x = lerp(b.x, W / 2 + (b.x - W / 2) * 0.15, gather), y = lerp(b.y, H / 2 + (b.y - H / 2) * 0.15, gather);
-      if (gather < 0.6) houseGlyph(x, y - 6 + (1 - g) * 20, 1.5 * g * (1 - gather), '#fff', 3.5);
-      if (gather > 0.2) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 5 * gather, 0, 7); ctx.fill(); }
-      if (b.k > 0.6 && gather < 0.5) { ctx.fillStyle = rgb(C.green); ctx.beginPath(); ctx.arc(x + 36, y + 12, 8 * eob(P(t, st + 0.3, st + 0.7)), 0, 7); ctx.fill(); }
+  // ---- S10 a decade of development: white chart card (line + area + columns), no dates
+  const cardIn = eo5(P(t, 60.5, 61.3)), cardOut = eio(P(t, 64.2, 64.9));
+  if (cardIn > 0 && cardOut < 1) {
+    const cw = 1400, ch = 700, cx = W / 2 - cardOut * 1500, cy = H / 2 + 30 + (1 - cardIn) * 700;
+    const bl = (1 - cardIn) * 14 + Math.sin(cardOut * Math.PI) * 20;
+    ctx.save(); if (bl > 0.5) ctx.filter = `blur(${bl}px)`;
+    card(cx - cw / 2, cy - ch / 2, cw, ch, { r: 40 });
+    const x0 = cx - cw / 2 + 110, x1 = cx + cw / 2 - 110, y0 = cy + ch / 2 - 110, y1 = cy - ch / 2 + 150;
+    ctx.fillStyle = '#e9ebf3'; for (let i = 0; i <= 4; i++) ctx.fillRect(x0, lerp(y0, y1, i / 4), x1 - x0, 2);
+    // columns
+    const N = 10;
+    for (let i = 0; i < N; i++) {
+      const g = eo5(P(t, 61.0 + i * 0.12, 61.7 + i * 0.12)), hh = (y0 - y1) * (0.18 + 0.62 * Math.pow((i + 1) / N, 1.5)) * g;
+      ctx.fillStyle = i === N - 1 ? rgb(C.royal) : '#d7dbf5'; rr(x0 + (i + 0.2) * (x1 - x0) / N, y0 - hh, (x1 - x0) / N * 0.6, hh, 10); ctx.fill();
     }
-    // rising development curve
-    const cp = []; for (let i = 0; i <= 60; i++) { const u = i / 60; cp.push([140 + u * (W - 280), 780 - 420 * Math.pow(u, 1.6) - Math.sin(u * 9) * 12]); }
-    strokePartial(cp, eio(P(t, 60.8, 63.9)) * (1 - gather), { strokeStyle: 'rgba(255,255,255,0.9)', lineWidth: 5, lineCap: 'round', lineJoin: 'round', shadowColor: 'rgba(255,255,255,0.6)', shadowBlur: 14 });
+    // line + area
+    const pts = []; for (let i = 0; i <= 80; i++) { const u = i / 80; pts.push([lerp(x0, x1, u), y0 - (y0 - y1) * (0.12 + 0.8 * Math.pow(u, 1.5) + 0.03 * Math.sin(u * 14))]); }
+    const f = eio(P(t, 61.2, 63.8)), n = Math.max(2, Math.round(80 * f) + 1);
+    const sub = pts.slice(0, n);
+    const ag = ctx.createLinearGradient(0, y1, 0, y0); ag.addColorStop(0, rgb(C.royal, 0.28)); ag.addColorStop(1, rgb(C.royal, 0));
+    ctx.fillStyle = ag; ctx.beginPath(); ctx.moveTo(sub[0][0], y0); sub.forEach(p => ctx.lineTo(...p)); ctx.lineTo(sub[sub.length - 1][0], y0); ctx.fill();
+    const head = strokePartial(sub, 1, { strokeStyle: rgb(C.royal), lineWidth: 7, lineJoin: 'round', lineCap: 'round' });
+    if (head && f > 0) { ctx.fillStyle = rgb(C.royal); ctx.beginPath(); ctx.arc(head[0], head[1], 13, 0, 7); ctx.fill(); ctx.strokeStyle = rgb(C.royal, 0.35); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(head[0], head[1], 13 + 20 * ((t * 1.5) % 1), 0, 7); ctx.stroke(); }
+    // card header: house icon chip
+    ctx.fillStyle = rgb(C.royal); ctx.beginPath(); ctx.arc(cx + cw / 2 - 90, cy - ch / 2 + 80, 34, 0, 7); ctx.fill(); houseGlyph(cx + cw / 2 - 90, cy - ch / 2 + 80, 1.15, '#fff', 3.5);
+    ctx.fillStyle = '#e9ebf3'; rr(cx + cw / 2 - 400, cy - ch / 2 + 62, 260, 16, 8); ctx.fill(); rr(cx + cw / 2 - 330, cy - ch / 2 + 88, 190, 12, 6); ctx.fill();
     ctx.restore();
   }
-  // ---- S11 +61%
-  const s11 = win(t, 64.5, 65.0, 68.2, 68.8);
+  // ---- S11 +61% with a growth sparkline
+  const s11 = win(t, 64.4, 64.9, 68.2, 68.8);
   if (s11 > 0) {
-    const r = rng(3), n = Math.floor(lerp(40, 600, eo(P(t, 64.6, 68.0))));
-    for (let i = 0; i < 600; i++) {
-      const ang = r() * Math.PI * 2, rad = 330 + r() * 700, sp = 0.03 + r() * 0.05, k = r();
-      if (i >= n) continue;
+    const sl = (1 - eo5(P(t, 64.4, 65.2))) * 600;
+    const r = rng(3), nd = Math.floor(lerp(40, 520, eo(P(t, 64.6, 68.0))));
+    for (let i = 0; i < 520; i++) {
+      const ang = r() * Math.PI * 2, rad = 380 + r() * 700, sp = 0.03 + r() * 0.05, k = r();
+      if (i >= nd) continue;
       const x = W / 2 + Math.cos(ang + t * sp) * rad * 1.2, y = H / 2 + Math.sin(ang + t * sp) * rad * 0.62;
-      ctx.fillStyle = `rgba(255,255,255,${s11 * (0.2 + 0.45 * k) * ss(P(t, 64.6 + i * 0.005, 65.0 + i * 0.005))})`;
+      ctx.fillStyle = `rgba(255,255,255,${s11 * (0.15 + 0.4 * k) * ss(P(t, 64.6 + i * 0.005, 65.0 + i * 0.005))})`;
       ctx.beginPath(); ctx.arc(x, y, 2 + k * 2.5, 0, 7); ctx.fill();
     }
     const up = -ei(P(t, 68.2, 68.8)) * 120;
-    rollNumber(['+', '6', '1', '%'], W / 2, H / 2 - 50 + up, 65.15, { size: 330, now: t, alpha: s11, dur: 1.4 });
-    pill('גידול באוכלוסייה', W / 2, H / 2 + 160 + up, { size: 36, weight: 800, s: eob(P(t, 66.4, 66.9)), alpha: s11, icon: (x, y, s) => arrowUp(x, y, s * 1.3, '#1f9d5c') });
+    rollNumber(['+', '6', '1', '%'], W / 2 + sl, H / 2 - 90 + up, 65.15, { size: 330, now: t, alpha: s11, dur: 1.4 });
+    const sp = []; for (let i = 0; i <= 50; i++) { const u = i / 50; sp.push([W / 2 - 330 + u * 660 + sl, H / 2 + 170 + up - 90 * Math.pow(u, 1.6) + 10 * Math.sin(u * 11)]); }
+    ctx.save(); ctx.globalAlpha *= s11;
+    const h = strokePartial(sp, eio(P(t, 65.4, 67.2)), { strokeStyle: '#46d38a', lineWidth: 6, lineCap: 'round', lineJoin: 'round' });
+    if (h) { ctx.fillStyle = '#46d38a'; ctx.beginPath(); ctx.arc(h[0], h[1], 10, 0, 7); ctx.fill(); }
+    ctx.restore();
+    pill('גידול באוכלוסייה', W / 2 + sl, H / 2 + 270 + up, { size: 36, weight: 800, s: eob(P(t, 66.4, 66.9)), alpha: s11, icon: (x, y, s) => arrowUp(x, y, s * 1.3, '#1f9d5c') });
   }
   // ---- S12 land market: royal panel slides away to black; bars
   const s12 = win(t, 68.4, 68.9, 75.6, 76.4);
@@ -779,8 +923,8 @@ function act4(t) {
   const s13 = ss(P(t, 75.9, 76.5)) * (1 - ss(P(t, 79.3, 79.9)));
   if (s13 > 0) {
     ctx.save(); ctx.globalAlpha *= s13;
-    const cam = { lon: 26.055, lat: 44.598, z: lerp(7500, 8800, P(t, 75.8, 79.8)), rot: 0 };
-    drawLocal(cam, 0.55, { cols: { 0: [255, 255, 255, 0.08], 1: [255, 255, 255, 0.6], 2: [255, 255, 255, 0.55], 3: [140, 230, 170, 0.6] } });
+    const cam = { lon: 26.06, lat: 44.56, z: lerp(2600, 3000, P(t, 75.8, 79.8)), rot: 0 };
+    drawRegion(cam, 0.35, t, {});
     const c = mproj(cam, ...GEO.corbeanca);
     const cxy = [W / 2, H / 2 + 20];
     const fade = 1 - ss(P(t, 78.7, 79.3));
@@ -908,11 +1052,12 @@ function act6(t) {
 }
 
 // ================================================================= frame
-function renderFrame(t) {
+function drawFrame(t) {
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none';
   ctx.fillStyle = rgb(C.black); ctx.fillRect(0, 0, W, H);
-  if (t < 30.0) act1(t);
+  if (t < 17.5) act1(t);
+  if (t > 16.2 && t < 30.0) act1b(t);
   if (t > 29.2 && t < 45.3) act2(t);
   if (t > 44.5 && t < 61) act3(t);
   if (t > 58.9 && t < 80) act4(t);
@@ -924,6 +1069,20 @@ function renderFrame(t) {
   drawLogoCorner(ss(P(t, 0.3, 1.2)) * (1 - ss(P(t, 94.2, 95.0))));
   const fb = ss(P(t, 101.3, 102.0));
   if (fb > 0) { ctx.fillStyle = `rgba(0,0,0,${fb})`; ctx.fillRect(0, 0, W, H); }
+}
+// Motion blur: average MB sub-frames across a 180° shutter (half a frame at 25 fps).
+const MB = Number(new URLSearchParams(location.search).get('mb') || 1);
+let ACC = null;
+function renderFrame(t) {
+  if (MB <= 1) return drawFrame(t);
+  if (!ACC) { ACC = document.createElement('canvas'); ACC.width = cv.width; ACC.height = cv.height; }
+  const ac = ACC.getContext('2d');
+  for (let i = 0; i < MB; i++) {
+    drawFrame(clamp(t + (i / (MB - 1) - 0.5) * 0.5 / 25, 0, 102));
+    ac.globalAlpha = 1 / (i + 1); ac.drawImage(cv, 0, 0);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(ACC, 0, 0);
 }
 window.renderFrame = renderFrame;
 window.READY = (async () => {

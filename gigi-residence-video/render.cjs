@@ -13,7 +13,7 @@ mkdirSync(outDir, { recursive: true });
 async function worker(browser, idx, a, b) {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   page.on('pageerror', e => console.error(`[w${idx}]`, e.message));
-  await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?scale=' + SCALE);
+  await page.goto('file://' + path.resolve(__dirname, 'index.html') + '?scale=' + SCALE + '&mb=' + (process.env.MB || 1));
   await page.evaluate(() => window.READY);
   const seg = path.join(outDir, `seg_${String(idx).padStart(2, '0')}.mp4`);
   const ff = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
