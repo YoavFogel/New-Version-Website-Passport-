@@ -4,28 +4,35 @@
 <meta charset="utf-8">
 <title>GIGI Residence Film</title>
 <style>
-  @font-face{font-family:Heebo;font-weight:300;src:url(assets/fonts/heebo-hebrew-300-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F,U+05F3-05F4}
-  @font-face{font-family:Heebo;font-weight:400;src:url(assets/fonts/heebo-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
-  @font-face{font-family:Heebo;font-weight:500;src:url(assets/fonts/heebo-hebrew-500-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
-  @font-face{font-family:Heebo;font-weight:700;src:url(assets/fonts/heebo-hebrew-700-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
-  @font-face{font-family:Heebo;font-weight:800;src:url(assets/fonts/heebo-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0590-05FF,U+FB1D-FB4F}
-  @font-face{font-family:Heebo;font-weight:300;src:url(assets/fonts/heebo-latin-300-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
-  @font-face{font-family:Heebo;font-weight:400;src:url(assets/fonts/heebo-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
-  @font-face{font-family:Heebo;font-weight:500;src:url(assets/fonts/heebo-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
-  @font-face{font-family:Heebo;font-weight:700;src:url(assets/fonts/heebo-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
-  @font-face{font-family:Heebo;font-weight:800;src:url(assets/fonts/heebo-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
-  @font-face{font-family:Cinzel;font-weight:400;src:url(assets/fonts/cinzel-latin-400-normal.woff2) format('woff2')}
-  @font-face{font-family:Cinzel;font-weight:500;src:url(assets/fonts/cinzel-latin-500-normal.woff2) format('woff2')}
-  @font-face{font-family:Cinzel;font-weight:600;src:url(assets/fonts/cinzel-latin-600-normal.woff2) format('woff2')}
-  @font-face{font-family:Cinzel;font-weight:700;src:url(assets/fonts/cinzel-latin-700-normal.woff2) format('woff2')}
+  /* Almoni (AlefAlefAlef, licensed): drop almoni-<weight>.woff2 files into assets/fonts to switch the film to it. */
+  @font-face{font-family:Almoni;font-weight:200;src:url(assets/fonts/almoni-200.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:300;src:url(assets/fonts/almoni-300.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:400;src:url(assets/fonts/almoni-400.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:500;src:url(assets/fonts/almoni-500.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:700;src:url(assets/fonts/almoni-700.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:800;src:url(assets/fonts/almoni-800.woff2) format('woff2')}
+  @font-face{font-family:Almoni;font-weight:900;src:url(assets/fonts/almoni-900.woff2) format('woff2')}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:200;src:url(assets/fonts/noto-sans-hebrew-hebrew-200-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:200;src:url(assets/fonts/noto-sans-hebrew-latin-200-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:300;src:url(assets/fonts/noto-sans-hebrew-hebrew-300-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:300;src:url(assets/fonts/noto-sans-hebrew-latin-300-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:400;src:url(assets/fonts/noto-sans-hebrew-hebrew-400-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:400;src:url(assets/fonts/noto-sans-hebrew-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:500;src:url(assets/fonts/noto-sans-hebrew-hebrew-500-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:500;src:url(assets/fonts/noto-sans-hebrew-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:700;src:url(assets/fonts/noto-sans-hebrew-hebrew-700-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:700;src:url(assets/fonts/noto-sans-hebrew-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:800;src:url(assets/fonts/noto-sans-hebrew-hebrew-800-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:800;src:url(assets/fonts/noto-sans-hebrew-latin-800-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:900;src:url(assets/fonts/noto-sans-hebrew-hebrew-900-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Noto Sans Hebrew';font-weight:900;src:url(assets/fonts/noto-sans-hebrew-latin-900-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2190-21FF}
   html,body{margin:0;background:#000;overflow:hidden}
   canvas{display:block;width:100vw;height:auto}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<script src="assets/world.js"></script>
-<script src="assets/brands.js"></script>
+<script src="assets/dots.js"></script>
 <script src="anim.js"></script>
 <script>
   // Preview mode: open index.html?play to watch in a browser with the voiceover.

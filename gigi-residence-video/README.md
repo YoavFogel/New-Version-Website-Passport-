@@ -1,11 +1,16 @@
 # GIGI RESIDENCE BY ISROMANA: 102-second motion-graphics film
 
+**v2 visual language** (after client feedback, modelled on the approved reference clip): flat royal-blue and near-black fields, dot-matrix maps, heavy Hebrew typography, rolling numbers with motion blur, white UI cards with slide transitions, and clean elevation-view architecture with depth layers.
+
+**Font:** the film is set up for **Almoni** (AlefAlefAlef). Almoni is a commercial licensed font, so it isn't included. Copy the licensed web-font files into `assets/fonts/` as `almoni-200.woff2`, `almoni-300.woff2`, `almoni-400.woff2`, `almoni-500.woff2`, `almoni-700.woff2`, `almoni-800.woff2` and `almoni-900.woff2`, then rebuild. Until then the film uses Noto Sans Hebrew (OFL).
+
 Procedural motion-graphics film. Every frame is drawn on one canvas as a pure function of time (`anim.js`). The frames are rendered headless in Chromium (Playwright) at 3840×2160, 25 fps, and muxed with the supplied Hebrew voiceover (unchanged) and an original synthesised music bed (`music.py`, no third-party samples, so it needs no licence).
 
 ```
 ./build.sh            # → out/GIGI_Residence_by_ISROMANA_4K.mp4  (≈15 min on 4 cores)
 ./build.sh out 0.5    # fast 960×540 draft (<1 min)
 node preview.cjs dir 12.5 33 66   # still frames for review
+node tools_dots.cjs                # rebuild assets/dots.js (dot-matrix land grids) from assets/world.js
 open index.html?play&scale=1      # live preview with voiceover (click to start)
 ```
 
@@ -37,7 +42,7 @@ The voiceover file is 100.6 s, not 99 s: speech ends at **100.36 s**. The film s
 
 1. **GIGI RESIDENCE logo.** No logo file was supplied, so the end card uses a clean typographic stand-in ("GIGI RESIDENCE" in Cinzel). To use the official file, put it in `assets/` and replace the `text('GIGI RESIDENCE', …)` call in `sceneBrand`.
 2. **LUXURY RESIDENCE.** The official ISROMANA logo already contains "LUXURY RESIDENCE". To avoid showing it twice, that moment is a light sweep and a gold underline on the logo's own tagline.
-3. **Mega Image logo.** The Lidl and Penny marks are the official monochrome glyphs from Simple Icons, in brand colours. No Mega Image file was available, so it appears as a neutral text badge. Replace it with the official file.
+3. **Supermarkets.** Lidl, Mega Image and Penny appear as uniform modern name chips, each with a brand-colour dot, instead of logos.
 4. **Geographic points to verify on a live map.** No map service was reachable while building this, so these use reference coordinates (all in `GEO`, `DN1`, `ROUTE`, `A0` at the top of `anim.js`):
    - the exact Lidl, Mega Image and Penny branches in Corbeanca (`GEO.lidl`, `GEO.mega`, `GEO.penny`);
    - the DN1 Value Centre position (`GEO.valueCentre`);
