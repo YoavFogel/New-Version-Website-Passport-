@@ -974,8 +974,8 @@ if (ready) {
     // Desktop: the hits run from when the stage settles to just before it leaves.
     const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: 'top top', end: 'bottom bottom', scrub: 0.6 } });
     // A short pause first, so the passport has settled in the middle before the first hit.
-    tl.to({}, { duration: 1 });
-    stamps.forEach((st, i) => hit(tl, st, 1 + i * 0.75));
+    tl.to({}, { duration: 1.6 });
+    stamps.forEach((st, i) => hit(tl, st, 1.6 + i * 0.75));
     tl.fromTo(sec.querySelector('.adv-sub'), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5 }, '>-0.2')
       .to({}, { duration: 0.6 });
     track(tl);
