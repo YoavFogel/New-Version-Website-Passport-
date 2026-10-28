@@ -44,10 +44,9 @@ h1, p, figure { margin: 0; }
 .hero-man { width: 100%; height: 100%; }
 /* Layer positions, as fractions of the 1122 × 1402 photograph. */
 .passport { position: absolute; left: 22.727%; top: 45.007%; width: 24.421%; height: auto; z-index: 2; pointer-events: none; user-select: none; will-change: transform; }
-.hero-thumb { position: absolute; left: 26.203%; top: 61.84%; width: 9.002%; height: auto; z-index: 3; pointer-events: none; user-select: none; }
+.hero-thumb { position: absolute; left: 26.203%; top: 61.84%; width: 9.002%; height: auto; z-index: 41; pointer-events: none; user-select: none; }
 /* Once main.js takes over, the same passport element floats above the page. */
 .passport.is-floating { position: fixed; left: 0; top: 0; z-index: 40; transform-origin: 50% 50%; }
-.hero-thumb.is-above { z-index: 41; }
 
 /* ---------- Empty pages, to be built one at a time ---------- */
 .page { position: relative; min-height: 100svh; display: grid; place-items: center; padding-inline: var(--margin); }
