@@ -22,7 +22,8 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html:not(.lenis) { scroll-behavior: smooth; }
+[id] { scroll-margin-top: 88px; }
 body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.6; font-size: 18px; }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--navy); }

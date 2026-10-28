@@ -1,3 +1,10 @@
+// Smooth scroll (Lenis 1.3.27, vendored in js/vendor). Skipped for reduced motion,
+// where the page keeps native scrolling. Anchor links respect scroll-margin-top.
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const lenis = !reduceMotion && window.Lenis
+  ? new Lenis({ autoRaf: true, anchors: true, lerp: 0.1 })
+  : null;
+
 // Mobile menu
 const toggle = document.querySelector('.menu-toggle');
 const mobileNav = document.getElementById('mobile-nav');
@@ -30,6 +37,7 @@ document.querySelectorAll('.video-facade').forEach((el) => {
     if (el.dataset.modal === 'true') {
       modalFrame.replaceChildren(makeIframe(id, el.dataset.title));
       modal.showModal();
+      lenis?.stop();
     } else {
       el.replaceChildren(makeIframe(id, el.dataset.title));
     }
@@ -37,7 +45,7 @@ document.querySelectorAll('.video-facade').forEach((el) => {
 });
 
 modal.querySelector('.modal-close').addEventListener('click', () => modal.close());
-modal.addEventListener('close', () => modalFrame.replaceChildren());
+modal.addEventListener('close', () => { modalFrame.replaceChildren(); lenis?.start(); });
 modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
 
 // Assistant placeholder: the real knowledge-base assistant is connected in a later step.
