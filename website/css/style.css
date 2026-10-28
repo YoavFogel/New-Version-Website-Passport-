@@ -124,4 +124,3 @@ h1, p, figure { margin: 0; }
 /* Line masks for the paragraphs the story reveals line by line. */
 .ln { display: block; overflow: clip; overflow-clip-margin: 0.2em; }
 .ln-in { display: block; will-change: transform; }
-.statement-file .word { display: inline-block; }

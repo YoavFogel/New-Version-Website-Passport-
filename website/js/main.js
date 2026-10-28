@@ -243,8 +243,9 @@ if (ready) {
           p.append(span, i < words.length - 1 ? ' ' : '');
         });
       }
-      track(gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.14, y: calm ? 0 : 10 }, {
-        opacity: 1, y: 0, ease: 'none', stagger: 0.12,
+      // Words stay inline (no transform), so the spaces between them always render.
+      track(gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.14 }, {
+        opacity: 1, ease: 'none', stagger: 0.12,
         scrollTrigger: { trigger: p, ...zone('top 85%', 'bottom 45%') },
       }));
     });
