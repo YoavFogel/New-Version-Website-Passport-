@@ -263,6 +263,23 @@
     });
   });
 
+  // ---------- Footer: this year, and a quiet entrance ----------
+  document.querySelectorAll('.ft-year').forEach((el) => { el.textContent = String(new Date().getFullYear()); });
+  if (hasGsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+    document.querySelectorAll('.site-foot').forEach((foot) => {
+      gsap.from(foot.querySelectorAll('[data-foot] > *, .ft-grid > *'), {
+        y: reduceMotion ? 12 : 40, opacity: 0, duration: reduceMotion ? 0.5 : 0.9, ease: 'power3.out', stagger: 0.07,
+        scrollTrigger: { trigger: foot, start: 'top 85%', once: true },
+      });
+      // The outlined wordmark drifts sideways as the footer comes up.
+      gsap.fromTo(foot.querySelector('.ft-word'), { xPercent: -42 }, {
+        xPercent: -58, ease: 'none',
+        scrollTrigger: { trigger: foot, start: 'top bottom', end: 'bottom bottom', scrub: true },
+      });
+    });
+  }
+
   // ---------- Small entrances for pages without the scroll story ----------
   if (hasGsap && window.ScrollTrigger && document.querySelector('[data-enter]')) {
     gsap.registerPlugin(ScrollTrigger);

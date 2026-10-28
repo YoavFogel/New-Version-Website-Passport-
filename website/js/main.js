@@ -112,10 +112,10 @@ if (ready) {
     const PEEK = 16; // px of passport left on screen when it waits at the edge, inside the side margin
     const sideX = (side, scale) => {
       const half = (pw * scale) / 2;
-      if (side === 'center') return vw / 2;
+      if (side === 'center' || side === 'fade') return vw / 2;
       // Peeking: mostly off the screen edge, so it never sits on text on a phone.
       if (side === 'peek-end' || side === 'hide') return -half + PEEK;
-      if (side === 'peek-start') return vw + half - PEEK;
+      if (side === 'peek-start' || side === 'hide-start') return vw + half - PEEK;
       // RTL: "start" is the right-hand side, "end" the left.
       return side === 'start' ? vw - edge - half : edge + half;
     };
@@ -130,17 +130,22 @@ if (ready) {
 
     // Then one continuous glide: it reaches each page's resting place when that page is
     // centred on screen, and is already on its way to the next one as the page scrolls on.
-    pages.forEach((page) => {
+    // Waypoints hidden at this width (display: none) are skipped.
+    pages.filter((page) => page.getClientRects().length).forEach((page) => {
       const spec = (phone && page.dataset.passportPhone) || page.dataset.passport;
       const [side, top, sc] = spec.split(' ');
       const scale = Number(sc) * (phone ? 0.8 : 1);
-      const cy = vh * (Number(top) / 100) + (ph * scale) / 2;
+      // Height: in vh, optionally with a px shift ("43-160" = 43vh less 160px).
+      const [, tv, tpx] = top.match(/^(-?[\d.]+)([+-]\d+)?$/) || [, top];
+      const cy = vh * (Number(tv) / 100) + Number(tpx || 0) + (ph * scale) / 2;
       const rot = /peek/.test(side) ? 0 : side === 'start' ? -3 : side === 'end' ? 3 : 0;
       const box = page.getBoundingClientRect();
       const centred = box.top + scrollY + box.height / 2 - vh / 2;
       const s = Math.max(centred, keys[keys.length - 1].s + vh * 0.3);
-      // 'hide' (phones, long reading): it shrinks and fades out at the edge until the text is past.
-      keys.push(at(s, sideX(side, scale), cy, side === 'hide' ? scale * 0.6 : scale, rot, side === 'hide' ? 0 : 1));
+      // 'hide' / 'hide-start': it shrinks and fades out at the left / right edge until the text
+      // is past. 'fade': it fades out where it is, in the middle.
+      const hidden = side === 'hide' || side === 'hide-start' || side === 'fade';
+      keys.push(at(s, sideX(side, scale), cy, /^hide/.test(side) ? scale * 0.6 : scale, rot, hidden ? 0 : 1));
     });
 
     const max = Math.max(ScrollTrigger.maxScroll(window), 1);
@@ -157,7 +162,7 @@ if (ready) {
       // A fade takes only a short stretch of scroll: out right after it leaves a rest, in just
       // before it reaches one, so it is never seen half-faded in the middle of the text.
       if (k.opacity !== prev.opacity) {
-        const win = Math.min(duration, vh * 0.15);
+        const win = Math.min(duration, vh * (phone ? 0.08 : 0.15));
         tl.to(scrollPose, { opacity: k.opacity, duration: win, ease: 'power1.inOut' }, k.opacity > prev.opacity ? k.s - win : prev.s);
       }
     });
@@ -938,8 +943,47 @@ if (ready) {
   })();
 
 
+  // ---------- What a Romanian passport gives you: stamps ----------
+  // Each advantage is stamped next to the passport: it drops from above, larger and turned,
+  // hits the page (the ink ring spreads out) and settles at its own small angle. On a desktop
+  // the eight hits share the sticky stage's scroll; on a phone each stamp lands as it arrives.
+  function advantages() {
+    const sec = document.getElementById('advantages');
+    if (!sec) return;
+    const mobile = window.innerWidth <= 900;
+    const calm = reduceMotion;
+    const stamps = [...sec.querySelectorAll('.stamp')];
+    const hit = (tl, st, at) => {
+      const ink = st.querySelector('.st-ink');
+      const r = parseFloat(getComputedStyle(st).getPropertyValue('--r')) || 0;
+      const big = mobile ? 1.35 : calm ? 1.4 : 2.4;  // on a phone it drops from closer, clear of the passport
+      tl.fromTo(ink, { scale: big, opacity: 0, rotation: r - (calm ? 6 : 18), y: mobile || calm ? -10 : -40 },
+        { scale: 1, opacity: 1, rotation: r, y: 0, ease: 'power4.in', duration: 0.5 }, at)
+        .fromTo(st.querySelector('.st-burst'), { opacity: 0.7, scale: 0.92 }, { opacity: 0, scale: 1.35, ease: 'power2.out', duration: 0.35 }, at + 0.5)
+        .fromTo(ink, { scale: 1 }, { keyframes: { scale: [0.94, 1.03, 1] }, ease: 'none', duration: 0.25 }, at + 0.5)
+        .fromTo(st.querySelector('.st-text'), { opacity: 0, y: 10 }, { opacity: 1, y: 0, ease: 'none', duration: 0.3 }, at + 0.55);
+    };
+    if (mobile) {
+      stamps.forEach((st) => {
+        const tl = gsap.timeline({ scrollTrigger: { trigger: st, start: 'top 92%', end: 'top 55%', scrub: 0.5 } });
+        hit(tl, st, 0);
+        track(tl);
+      });
+      return;
+    }
+    // Desktop: the hits run from when the stage settles to just before it leaves.
+    const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: 'top top', end: 'bottom bottom', scrub: 0.6 } });
+    // A short pause first, so the passport has settled in the middle before the first hit.
+    tl.to({}, { duration: 1 });
+    stamps.forEach((st, i) => hit(tl, st, 1 + i * 0.75));
+    tl.fromTo(sec.querySelector('.adv-sub'), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5 }, '>-0.2')
+      .to({}, { duration: 0.6 });
+    track(tl);
+  }
+
+
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { story(); services(); faq.build(); gallery.build(); build(); ScrollTrigger.refresh(); };
+  const start = () => { story(); services(); advantages(); faq.build(); gallery.build(); build(); ScrollTrigger.refresh(); };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });

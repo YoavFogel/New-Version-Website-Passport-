@@ -506,18 +506,6 @@ html.menu-open { overflow: hidden; }
   .lf-btn { padding: 0 26px; }
 }
 
-/* ---------- Footer ---------- */
-.site-foot { background: var(--navy-deep); color: #c9d0e6; padding-block: 56px calc(48px + env(safe-area-inset-bottom)); }
-.site-foot .about-wrap { align-items: center; row-gap: 28px; }
-.foot-logo { grid-column: 1 / 4; width: 150px; height: auto; filter: brightness(0) invert(1); opacity: .9; }
-.foot-contact { grid-column: 4 / -1; display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: flex-end; font-style: normal; font-size: 16px; }
-.foot-contact a { color: #fff; text-decoration: none; }
-.foot-contact a:hover, .foot-contact a:focus-visible { color: var(--yellow); }
-@media (max-width: 900px) {
-  .foot-logo, .foot-contact { grid-column: 1 / -1; }
-  .foot-contact { justify-content: flex-start; flex-direction: column; }
-}
-
 /* ---------- Contact page ---------- */
 .contact-page { background: var(--ground); }
 .ct-bar { padding: 26px var(--margin) 0; }
@@ -562,4 +550,92 @@ html.menu-open { overflow: hidden; }
   /* Phone: the button is a round icon (its word stays for screen readers), clear of the centred logo. */
   .menu-btn { top: 16px; left: 14px; width: 48px; padding: 0; justify-content: center; }
   .menu-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+
+/* ---------- What a Romanian passport gives you: stamps around the passport ---------- */
+/* Desktop: a 100vh stage that stays put (sticky) while the section scrolls past it; the page's
+   passport rests in the middle and eight stamps land around it. The middle is kept clear. */
+.adv { position: relative; background: var(--ground); height: 330vh; }
+.adv-mark { position: absolute; left: 0; width: 1px; height: 1px; pointer-events: none; }
+.adv-m0 { top: -60vh; } .adv-m1 { top: 0; } .adv-m2 { top: 50vh; } .adv-m3 { top: calc(100% - 50vh); } .adv-m4 { top: calc(100% - 22vh); }
+.adv-slot, .adv-phone-mark { display: none; }
+.adv-stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip; }
+.adv-head { position: absolute; top: max(28px, 6vh); left: 0; right: 0; text-align: center; z-index: 2; }
+.adv-head .sv-num { justify-content: center; margin-bottom: 10px; }
+.adv-title { margin: 0; font-size: clamp(34px, 3.8vw, 64px); line-height: 1.02; letter-spacing: -0.03em; font-weight: 900; color: var(--navy-deep); }
+.adv-sub { position: absolute; left: 50%; bottom: max(24px, 5vh); transform: translateX(-50%); margin: 0; width: max-content; max-width: 26vw; text-align: center; font-size: clamp(16px, 1.3vw, 20px); font-weight: 500; color: var(--navy); text-wrap: balance; }
+.adv-stamps { margin: 0; padding: 0; list-style: none; }
+.stamp { --w: clamp(146px, 13.5vw, 200px); --ink: var(--navy); position: absolute; left: calc(50% + var(--x) * 1vw); top: calc(52% + var(--y) * 1vh); width: var(--w); margin-left: calc(var(--w) / -2); transform: translateY(-50%); display: grid; justify-items: center; gap: 10px; text-align: center; }
+.stamp.is-wine { --ink: #7d1a33; }
+.st-ink { position: relative; display: grid; justify-items: center; align-content: center; gap: 6px; width: 100%; aspect-ratio: 1.55; padding: 10px 12px; color: var(--ink); border: 3px solid currentColor; border-radius: 14px; box-shadow: inset 0 0 0 4px var(--ground), inset 0 0 0 5.5px currentColor; transform: rotate(var(--r)); will-change: transform, opacity;
+  /* worn ink */
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2.05'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2.05'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.stamp.is-round .st-ink { aspect-ratio: 1; width: 76%; border-radius: 50%; }
+.st-ico { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.st-title { font-size: clamp(15px, 1.2vw, 19px); line-height: 1.1; font-weight: 900; letter-spacing: -0.01em; text-wrap: balance; }
+.st-code { font-size: 11px; font-weight: 700; letter-spacing: .22em; opacity: .75; }
+.st-burst { position: absolute; inset: -10px; border-radius: inherit; border: 2px solid currentColor; opacity: 0; pointer-events: none; }
+.st-text { margin: 0; max-width: 15em; font-size: clamp(13px, 1vw, 15px); line-height: 1.45; color: var(--navy-soft); text-wrap: balance; }
+
+@media (max-width: 900px) {
+  /* Phone: the passport lands in a gap under the title; the stamps follow in two columns. */
+  .adv { height: auto; padding-block: 90px 80px; overflow-x: clip; }
+  .adv-wide { display: none; }
+  .adv-stage { position: relative; height: auto; overflow: visible; padding-inline: var(--margin); }
+  .adv-head { position: relative; top: 0; }
+  /* It rides along with the gap for 260px of scroll: a second rest 260px further and 260px
+     higher (longer than the shortest stretch allowed between two rests). */
+  .adv-slot { display: block; position: relative; height: 250px; }
+  .adv-slot-end { position: absolute; left: 0; top: calc(50% + 260px); width: 1px; height: 0; }
+  .adv-phone-mark { display: block; height: 1px; }
+  .adv-stamps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px 14px; }
+  .stamp { position: relative; left: auto; top: auto; margin: 0; width: auto; min-width: 0; transform: none; }
+  .stamp:nth-child(even) { transform: translateY(26px); }
+  .st-ink { width: 100%; }
+  .stamp.is-round .st-ink { width: 82%; }
+  .adv-sub { position: relative; left: auto; bottom: auto; transform: none; width: auto; max-width: none; margin-top: 56px; font-size: 18px; }
+}
+
+/* ---------- Footer ---------- */
+.site-foot { position: relative; overflow: clip; background: var(--navy-deep); color: #c9d0e6; padding-top: clamp(72px, 11vh, 120px); }
+.site-foot .about-wrap > * { grid-column: 1 / -1; }
+.ft-cta { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; flex-wrap: wrap; padding-bottom: clamp(48px, 8vh, 80px); border-bottom: 1px solid rgba(255, 255, 255, .12); }
+.ft-kicker { margin: 0 0 14px; font-size: 15px; font-weight: 700; letter-spacing: .14em; color: var(--yellow); }
+.ft-line { margin: 0; font-size: clamp(36px, 4.6vw, 76px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 900; color: #fff; }
+.ft-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.ft-btn { display: inline-flex; align-items: center; gap: 10px; height: 58px; padding: 0 26px; border-radius: 999px; background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .32); font-size: 17px; font-weight: 700; text-decoration: none; transition: background-color 250ms, color 250ms, box-shadow 250ms, transform 250ms; }
+.ft-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ft-btn:hover { transform: translateY(-2px); background: #fff; color: var(--navy-deep); box-shadow: none; }
+.ft-btn-wa { background: var(--yellow); color: var(--navy-deep); box-shadow: none; }
+.ft-btn-wa:hover { background: #fff; }
+.ft-btn:focus-visible, .site-foot a:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.ft-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 40px; padding-block: clamp(48px, 8vh, 72px); }
+.ft-brand p { margin: 18px 0 0; max-width: 22em; font-size: 15px; line-height: 1.6; color: #aab3d1; }
+.foot-logo { width: 150px; height: auto; filter: brightness(0) invert(1); opacity: .92; }
+.ft-h { margin: 0 0 16px; font-size: 13px; font-weight: 700; letter-spacing: .16em; color: #8f9abf; }
+.ft-address { font-style: normal; display: grid; gap: 4px; font-size: 17px; line-height: 1.4; color: #fff; }
+.ft-address span { color: #c9d0e6; font-size: 15px; }
+.ft-more { display: inline-flex; margin-top: 14px; font-size: 15px; font-weight: 700; color: var(--yellow); text-decoration: none; }
+.ft-more::after { content: "←"; margin-inline-start: 8px; transition: transform 250ms; }
+.ft-more:hover::after { transform: translateX(-4px); }
+.ft-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.ft-list a { position: relative; color: #fff; text-decoration: none; font-size: 16px; overflow-wrap: anywhere; }
+.ft-list a::after { content: ""; position: absolute; right: 0; bottom: -3px; width: 100%; height: 2px; background: var(--yellow); transform: scaleX(0); transform-origin: 100% 50%; transition: transform 350ms cubic-bezier(.2, .8, .2, 1); }
+.ft-list a:hover::after { transform: scaleX(1); }
+.ft-nav { grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.ft-nav a { font-size: 15px; color: #c9d0e6; }
+.ft-bottom { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 22px calc(22px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255, 255, 255, .12); font-size: 14px; color: #8f9abf; }
+.ft-bottom p { margin: 0; }
+.ft-top { display: inline-flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; font-weight: 700; }
+.ft-top svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 300ms; }
+.ft-top:hover svg { transform: translateY(-3px); }
+.ft-word { position: absolute; left: 50%; bottom: -0.2em; transform: translateX(-50%); margin: 0; white-space: nowrap; font-size: clamp(90px, 17vw, 300px); line-height: 1; font-weight: 900; letter-spacing: -0.04em; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, .07); pointer-events: none; user-select: none; }
+@media (max-width: 900px) {
+  .ft-cta { align-items: flex-start; flex-direction: column; }
+  .ft-actions { width: 100%; }
+  .ft-btn { flex: 1 1 auto; justify-content: center; }
+  .ft-grid { grid-template-columns: 1fr; gap: 34px; }
+  .ft-list a { overflow-wrap: normal; }
+  .ft-brand { grid-column: 1 / -1; }
+  .ft-grid > nav { grid-column: 1 / -1; }
 }
