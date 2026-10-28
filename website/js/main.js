@@ -1,6 +1,7 @@
 // EU Passport: the passport leaves the man's hand on scroll and travels down the page.
 // One element (#passport) does the whole journey; everything is tied to the scroll position,
-// so scrolling back up plays the same path in reverse. At the very top the passport docks
+// so scrolling back up plays the same path in reverse (except in the journey section, where it
+// runs on its own clock; see below). At the very top the passport docks
 // back into the photo itself, so it sits exactly where it is in the original picture.
 // The move only happens while the visitor scrolls, so it stays on under reduced motion too,
 // in a calmer form: native scrolling, no rotation.
@@ -25,18 +26,24 @@ if (ready) {
   // Where the passport sits in the 1122 × 1402 photograph.
   const PHOTO = { left: 255 / 1122, top: 631 / 1402, width: 274 / 1122, ratio: 329 / 274 };
 
+  // One controller, two sources. The scroll timeline writes `scrollPose`, the journey writes
+  // `journey.pose()`, and render() blends them by `journey.mix` (0 = scroll, 1 = journey) and is
+  // the only thing that ever moves the passport. So the hand-off between modes never jumps.
+  const scrollPose = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1 };
   let trigger = null;
+  let scrollTl = null;
   let floatWidth = 0;
+  let floatHeight = 0;
   let docked = true;
 
   // Docked: the passport is a plain layer of the photo (positioned by style.css).
-  // The timeline keeps rendering its first frame at the top, so the dock clears that every time.
   function dock() {
+    if (docked) return;
     docked = true;
     passport.classList.remove('is-floating');
     gsap.set(passport, { clearProps: 'transform,width,opacity' });
   }
-  // Floating: the same element, fixed to the viewport and moved by the timeline.
+  // Floating: the same element, fixed to the viewport and moved by render().
   function undock() {
     if (!docked) return;
     docked = false;
@@ -44,9 +51,31 @@ if (ready) {
     gsap.set(passport, { width: floatWidth });
   }
 
+  const set = {
+    x: gsap.quickSetter(passport, 'x', 'px'),
+    y: gsap.quickSetter(passport, 'y', 'px'),
+    // quickSetter does not apply the 'scale' shorthand, so both axes are set.
+    scale: ((sx, sy) => (v) => { sx(v); sy(v); })(gsap.quickSetter(passport, 'scaleX'), gsap.quickSetter(passport, 'scaleY')),
+    rotation: gsap.quickSetter(passport, 'rotation', 'deg'),
+    opacity: gsap.quickSetter(passport, 'opacity'),
+  };
+  function render() {
+    // At the very top, after the scrub has caught up, the passport docks back into the photo.
+    const atTop = scrollTl && scrollTl.time() <= 0.5 && journey.mix === 0;
+    if (atTop) { dock(); return; }
+    undock();
+    const m = journey.mix;
+    const j = m > 0 ? journey.pose() : null;
+    for (const k of ['x', 'y', 'scale', 'rotation', 'opacity']) {
+      set[k](j ? scrollPose[k] + (j[k] - scrollPose[k]) * m : scrollPose[k]);
+    }
+  }
+  gsap.ticker.add(render);
+
   function build() {
     trigger?.kill();
     trigger = null;
+    docked = false;
     dock();
 
     const scrollY = window.scrollY;
@@ -59,6 +88,7 @@ if (ready) {
     const pw = fig.width * PHOTO.width;
     const ph = pw * PHOTO.ratio;
     floatWidth = pw;
+    floatHeight = ph;
     const hand = {
       cx: fig.left + fig.width * PHOTO.left + pw / 2,
       cy: fig.top + scrollY + fig.height * PHOTO.top + ph / 2,
@@ -104,20 +134,17 @@ if (ready) {
     const max = Math.max(ScrollTrigger.maxScroll(window), 1);
     const tl = gsap.timeline({ paused: true });
     const [first, ...rest] = keys;
-    tl.set(passport, { x: first.x, y: first.y, scale: first.scale, rotation: first.rotation, opacity: 1 }, 0);
+    tl.set(scrollPose, { x: first.x, y: first.y, scale: first.scale, rotation: first.rotation, opacity: 1 }, 0);
     rest.forEach((k, i) => {
       const prev = keys[i];
-      tl.to(passport, {
+      tl.to(scrollPose, {
         x: k.x, y: k.y, scale: k.scale, rotation: k.rotation, opacity: k.opacity,
         duration: Math.max(k.s - prev.s, 1),
         ease: i === 0 ? 'power1.out' : 'sine.inOut',
       }, prev.s);
     });
     if (tl.duration() < max) tl.to({}, { duration: max - tl.duration() }, tl.duration());
-
-    // Dock at the very top, float everywhere else. This runs on every rendered frame,
-    // after the scrub has caught up, so the top always ends docked in the photo.
-    tl.eventCallback('onUpdate', () => (tl.time() <= 0.5 ? dock() : undock()));
+    scrollTl = tl;
 
     trigger = ScrollTrigger.create({
       start: 0,
@@ -126,8 +153,159 @@ if (ready) {
       animation: tl,
     });
     tl.progress(trigger.progress);
-    if (tl.time() > 0.5) undock(); else dock();
+    journey.layout(phone);
+    render();
   }
+
+  // ---------- The journey: nine stages on the passport's own clock ----------
+  // Scroll only decides whether the visitor is here. While the stages are in view the passport
+  // leaves its scroll path (mix 0 -> 1), travels stage to stage on a timer, and when the last
+  // stage has been shown, or the visitor scrolls away early, it rejoins the scroll (mix -> 0).
+  const journey = (() => {
+    const wrap = document.getElementById('tl');
+    const svg = wrap?.querySelector('.tl-path');
+    const track = svg?.querySelector('.tl-track');
+    const done = svg?.querySelector('.tl-done');
+    const stages = wrap ? [...wrap.querySelectorAll('.stage')] : [];
+    const MOVE = reduceMotion ? 0.7 : 0.9;   // seconds between stages
+    const HOLD = 1.35;                       // seconds on each stage, long enough to read the title
+    const ACTIVE = 1.24;                     // matches .stage.is-active .tl-circle in style.css
+    const api = { mix: 0, len: 0 };
+    let nodes = [];
+    let total = 0;
+    let phone = false;
+    let runTl = null;
+    let mixTween = null;
+    let state = 'idle';                      // idle | running | stopped | done
+    let reached = 0;                         // next stage to show when resuming
+    let watch = null;
+
+    // Position of an element inside an ancestor, without transforms (layout only).
+    function offsetIn(el, anc) {
+      let x = 0, y = 0, n = el;
+      while (n && n !== anc) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      return { x, y };
+    }
+
+    // A smooth curve through the stage centres (Catmull-Rom as cubic Béziers).
+    function pathThrough(pts) {
+      let d = `M${pts[0].x},${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        const t = 0.5 / 3;
+        d += ` C${p1.x + (p2.x - p0.x) * t},${p1.y + (p2.y - p0.y) * t} ${p2.x - (p3.x - p1.x) * t},${p2.y - (p3.y - p1.y) * t} ${p2.x},${p2.y}`;
+      }
+      return d;
+    }
+
+    api.layout = (isPhone) => {
+      if (!wrap) return;
+      phone = isPhone;
+      const pts = stages.map((st) => {
+        const c = st.querySelector('.tl-circle');
+        const o = offsetIn(c, wrap);
+        return { x: o.x + c.offsetWidth / 2, y: o.y + c.offsetHeight / 2, r: c.offsetWidth / 2 };
+      });
+      svg.setAttribute('viewBox', `0 0 ${wrap.offsetWidth} ${wrap.offsetHeight}`);
+      const d = pathThrough(pts);
+      track.setAttribute('d', d);
+      done.setAttribute('d', d);
+      total = track.getTotalLength();
+      done.style.strokeDasharray = `${total}`;
+      // Where on the path each stage sits.
+      nodes = pts.map((p) => {
+        let best = 0, bestD = Infinity;
+        for (let l = 0; l <= total; l += 2) {
+          const q = track.getPointAtLength(l);
+          const dd = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
+          if (dd < bestD) { bestD = dd; best = l; }
+        }
+        return best;
+      });
+      api.radius = pts[0].r;
+      if (state === 'done') api.len = total;
+      api.len = Math.min(api.len || nodes[0], total);
+      paint();
+    };
+
+    function paint() { if (done) done.style.strokeDashoffset = `${total - api.len}`; }
+
+    // The passport's pose on the path, in viewport coordinates: above the circle on desktop,
+    // on the circle's outer shoulder on a phone. Small enough to leave the title clear.
+    api.pose = () => {
+      const box = svg.getBoundingClientRect();
+      const sx = box.width / (wrap.offsetWidth || 1);
+      const q = track.getPointAtLength(api.len);
+      const R = api.radius * ACTIVE;
+      const targetW = phone ? R * 0.95 : R * 1.0;
+      const scale = targetW / floatWidth;
+      const h = floatHeight * scale;
+      const cx = box.left + q.x * sx + (phone ? R * 0.9 : 0);
+      const cy = box.top + q.y * sx - (phone ? R * 0.55 : R + h / 2 + 8);
+      return { x: cx - floatWidth / 2, y: cy - floatHeight / 2, scale, rotation: 0, opacity: 1 };
+    };
+
+    function setActive(i) {
+      stages.forEach((st, k) => {
+        st.classList.toggle('is-active', k === i);
+        if (k < i) st.classList.add('is-visited');
+      });
+    }
+
+    function mixTo(v, dur) {
+      mixTween?.kill();
+      mixTween = gsap.to(api, { mix: v, duration: dur, ease: 'power2.inOut' });
+      return mixTween;
+    }
+
+    function run() {
+      runTl?.kill();
+      const from = reached;
+      api.len = nodes[from];
+      paint();
+      state = 'running';
+      // Arrive: the passport leaves its scroll path and settles on the next stage.
+      mixTo(1, 1.1);
+      runTl = gsap.timeline({ delay: 1.0 });
+      runTl.call(() => setActive(from));
+      for (let i = from; i < nodes.length; i++) {
+        runTl.to({}, { duration: HOLD });
+        if (i < nodes.length - 1) {
+          runTl.call(() => { stages[i].classList.remove('is-active'); stages[i].classList.add('is-visited'); reached = i + 1; });
+          runTl.to(api, { len: nodes[i + 1], duration: MOVE, ease: 'power2.inOut', onUpdate: paint });
+          runTl.call(() => setActive(i + 1));
+        }
+      }
+      // After the last stage: it lifts off the path and rejoins the scroll.
+      runTl.call(() => { stages.at(-1).classList.remove('is-active'); stages.at(-1).classList.add('is-visited'); reached = nodes.length; state = 'done'; mixTo(0, 1.2); });
+    }
+
+    function leave() {
+      if (state !== 'running') return;
+      runTl?.kill();
+      state = 'stopped';
+      stages.forEach((st) => st.classList.remove('is-active'));
+      mixTo(0, 0.9);
+    }
+
+    api.watch = () => {
+      if (!wrap) return;
+      watch?.kill();
+      watch = ScrollTrigger.create({
+        trigger: wrap,
+        // Running only while the stages are well in view: their top past the middle of the
+        // screen, their bottom not yet above it.
+        start: () => (phone ? 'top 66%' : 'top 62%'),
+        end: () => (phone ? 'bottom 34%' : 'bottom 38%'),
+        onToggle: (self) => {
+          if (self.isActive) { if (state === 'idle' || state === 'stopped') run(); }
+          else leave();
+        },
+      });
+    };
+    return api;
+  })();
+  journey.watch();
 
   // ---------- About: the story is revealed by the scroll itself ----------
   // Every move is scrubbed to the scroll position: the text arrives as the reader scrolls
