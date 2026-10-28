@@ -137,11 +137,17 @@ if (ready) {
     tl.set(scrollPose, { x: first.x, y: first.y, scale: first.scale, rotation: first.rotation, opacity: 1 }, 0);
     rest.forEach((k, i) => {
       const prev = keys[i];
+      const duration = Math.max(k.s - prev.s, 1);
       tl.to(scrollPose, {
-        x: k.x, y: k.y, scale: k.scale, rotation: k.rotation, opacity: k.opacity,
-        duration: Math.max(k.s - prev.s, 1),
-        ease: i === 0 ? 'power1.out' : 'sine.inOut',
+        x: k.x, y: k.y, scale: k.scale, rotation: k.rotation,
+        duration, ease: i === 0 ? 'power1.out' : 'sine.inOut',
       }, prev.s);
+      // A fade takes only a short stretch of scroll: out right after it leaves a rest, in just
+      // before it reaches one, so it is never seen half-faded in the middle of the text.
+      if (k.opacity !== prev.opacity) {
+        const win = Math.min(duration, vh * 0.15);
+        tl.to(scrollPose, { opacity: k.opacity, duration: win, ease: 'power1.inOut' }, k.opacity > prev.opacity ? k.s - win : prev.s);
+      }
     });
     if (tl.duration() < max) tl.to({}, { duration: max - tl.duration() }, tl.duration());
     scrollTl = tl;
@@ -463,8 +469,134 @@ if (ready) {
   }
 
 
+  // ---------- What you get from us ----------
+  // Same rule as the story: everything is scrubbed to the scroll, nothing waits on a timer and
+  // nothing pins the page. The map is the one elaborate move; the rest is type and small lines.
+  function services() {
+    const mobile = window.innerWidth <= 900;
+    const calm = reduceMotion;
+    const scrub = 0.8;
+
+    // The principle: the lead-in first, then the line itself rises larger out of its mask.
+    const pr = document.getElementById('principle');
+    if (pr) {
+      const tl = gsap.timeline({ scrollTrigger: { trigger: pr, start: 'top 88%', end: mobile ? 'bottom 55%' : 'bottom 50%', scrub } });
+      tl.fromTo(pr.querySelector('.pr-a'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, ease: 'none', duration: 0.35 })
+        .fromTo(pr.querySelector('.pr-in'), { yPercent: 105, scale: calm ? 0.96 : 0.9 }, { yPercent: 0, scale: 1, ease: 'power2.out', duration: 0.65 }, 0.3);
+      track(tl);
+    }
+
+    // Highlights drawn one after another while the line is read.
+    document.querySelectorAll('[data-markers]').forEach((p) => {
+      track(gsap.fromTo(p.querySelectorAll('.marker'), { backgroundSize: '0% 0.32em' }, {
+        backgroundSize: '100% 0.32em', ease: 'none', stagger: 0.5,
+        scrollTrigger: { trigger: p, start: 'top 85%', end: mobile ? 'bottom 50%' : 'bottom 45%', scrub },
+      }));
+      track(gsap.fromTo(p, { opacity: 0, y: 24 }, { opacity: 1, y: 0, ease: 'none', scrollTrigger: { trigger: p, start: 'top 95%', end: 'top 75%', scrub } }));
+    });
+
+    // 01: the thread is drawn down beside the paragraphs as they are read.
+    document.querySelectorAll('.sv-thread').forEach((th) => {
+      track(gsap.fromTo(th, { '--p': 0 }, {
+        '--p': 1, ease: 'none',
+        scrollTrigger: { trigger: th.parentNode, start: 'top 75%', end: 'bottom 55%', scrub },
+      }));
+    });
+
+    // 02: six loose papers, scattered, settle into one file and the file closes over them.
+    const docs = document.getElementById('sv-docs');
+    if (docs) {
+      const papers = [...docs.querySelectorAll('.doc')];
+      const spread = calm ? 0.55 : 1;
+      const from = [[-38, -30, -14], [34, -34, 11], [-44, 12, 8], [40, 6, -9], [-14, 36, -6], [16, -6, 16]];
+      const tl = gsap.timeline({ scrollTrigger: { trigger: docs, start: 'top 85%', end: mobile ? 'bottom 50%' : 'center 40%', scrub } });
+      papers.forEach((d, i) => {
+        const [x, y, r] = from[i];
+        tl.fromTo(d, { xPercent: x * 2.2 * spread, yPercent: y * 1.6 * spread, rotation: r * spread, opacity: 0 }, {
+          xPercent: (i - 2.5) * 6, yPercent: -i * 3, rotation: (i - 2.5) * 2, opacity: 1, ease: 'power2.inOut', duration: 1,
+        }, i * 0.08);
+      });
+      tl.fromTo(docs.querySelector('.folder-back'), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, ease: 'none', duration: 0.4 }, 0.5)
+        .fromTo(docs.querySelector('.folder-front'), { yPercent: 70, opacity: 0, rotationX: calm ? 0 : -50 }, { yPercent: 0, opacity: 1, rotationX: 0, ease: 'power2.out', duration: 0.5 }, 1.0);
+      track(tl);
+    }
+
+    // 03: the flight from Israel to Bucharest, then the four teams, Bucharest first.
+    const map = document.getElementById('sv-map');
+    if (map) {
+      const route = map.querySelector('#map-route');
+      const plane = map.querySelector('#map-plane');
+      const len = route.getTotalLength();
+      const cities = ['buc', 'ias', 'chi', 'cze'].map((c) => ({
+        dot: map.querySelector(`[data-city="${c}"]`),
+        label: map.querySelector(`[data-label="${c}"]`),
+      }));
+      const links = [...map.querySelectorAll('.link')];
+      links.forEach((l) => { const n = l.getTotalLength(); l.style.strokeDasharray = `${n}`; l.dataset.len = n; });
+      route.style.strokeDasharray = `${len}`;
+      const fly = { p: 0 };
+      const placePlane = () => {
+        const p = Math.min(fly.p, 0.999);
+        const a = route.getPointAtLength(p * len);
+        const b = route.getPointAtLength(Math.min(p * len + 2, len));
+        const ang = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+        // It grows as it climbs and settles as it lands.
+        const s = 1 + Math.sin(Math.PI * fly.p) * (calm ? 0.1 : 0.35);
+        plane.setAttribute('transform', `translate(${a.x} ${a.y}) rotate(${ang}) scale(${s})`);
+        plane.style.opacity = fly.p >= 1 ? 0 : 1;
+        route.style.strokeDashoffset = `${len * (1 - fly.p)}`;
+      };
+      const st = mobile
+        ? { trigger: map, start: 'top 80%', end: 'bottom 80%', scrub }
+        : { trigger: map.parentNode, start: 'top 25%', end: 'bottom 92%', scrub };
+      const tl = gsap.timeline({ scrollTrigger: st });
+      tl.fromTo(map.querySelector('.map-base'), { opacity: 0.35, scale: calm ? 1 : 1.06 }, { opacity: 1, scale: 1, ease: 'none', duration: 0.12 }, 0)
+        .fromTo(map.querySelector('.map-origin'), { opacity: 0 }, { opacity: 1, duration: 0.06 }, 0.04)
+        .fromTo(fly, { p: 0 }, { p: 1, ease: 'power1.inOut', duration: 0.42, onUpdate: placePlane }, 0.08);
+      cities.forEach((c, i) => {
+        const at = 0.5 + i * 0.12;
+        if (i > 0) tl.fromTo(links[i - 1], { strokeDashoffset: links[i - 1].dataset.len }, { strokeDashoffset: 0, ease: 'none', duration: 0.08 }, at - 0.07);
+        tl.fromTo(c.dot, { scale: 0, transformOrigin: '50% 50%' }, {
+          scale: 1, ease: calm ? 'none' : 'back.out(2.4)', duration: 0.06,
+          onComplete: () => c.dot.classList.add('is-on'),
+          onReverseComplete: () => c.dot.classList.remove('is-on'),
+        }, at)
+          .fromTo(c.label, { opacity: 0, y: 8 }, { opacity: 1, y: 0, ease: 'none', duration: 0.06 }, at + 0.02);
+      });
+      tl.to({}, { duration: 0.08 });
+      placePlane();
+      track(tl);
+    }
+
+    // 04: the file is carried across on one unbroken line, and handed over at the far end.
+    const relay = document.getElementById('sv-relay');
+    if (relay) {
+      const file = relay.querySelector('.relay-file');
+      const tl = gsap.timeline({ scrollTrigger: { trigger: relay, start: 'top 80%', end: mobile ? 'bottom 35%' : 'bottom 45%', scrub } });
+      tl.fromTo(relay.querySelector('.relay-line i'), { '--p': 0 }, { '--p': 1, ease: 'none', duration: 1 }, 0)
+        .fromTo(file, { x: 0 }, { x: () => -(relay.offsetWidth - 16), ease: 'none', duration: 1 }, 0)
+        .fromTo(file, { y: 0 }, { keyframes: { y: [0, calm ? -4 : -10, 0] }, ease: 'sine.inOut', duration: 1 }, 0)
+        .fromTo(relay.querySelector('.relay-to b'), { scale: 1 }, { scale: 1.5, ease: 'back.out(3)', duration: 0.12 }, 0.92);
+      track(tl);
+    }
+
+    // 05: the last line rises out of its mask, and the passport it speaks of is underlined.
+    document.querySelectorAll('[data-final]').forEach((el) => {
+      const lines = [...el.querySelectorAll('.fl')].map((fl) => {
+        let inner = fl.querySelector(':scope > .fl-in');
+        if (!inner) { inner = document.createElement('span'); inner.className = 'fl-in'; inner.append(...fl.childNodes); fl.append(inner); }
+        return inner;
+      });
+      const tl = gsap.timeline({ scrollTrigger: { trigger: el, start: 'top 90%', end: mobile ? 'bottom 45%' : 'bottom 50%', scrub } });
+      tl.fromTo(lines, { yPercent: 108 }, { yPercent: 0, ease: 'power2.out', stagger: 0.25, duration: 0.6 })
+        .fromTo(el.querySelector('.marker'), { backgroundSize: '0% 0.3em' }, { backgroundSize: '100% 0.3em', ease: 'none', duration: 0.4 }, 0.6);
+      track(tl);
+    });
+  }
+
+
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { story(); build(); ScrollTrigger.refresh(); };
+  const start = () => { story(); services(); build(); ScrollTrigger.refresh(); };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });
