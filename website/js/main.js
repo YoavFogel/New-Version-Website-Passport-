@@ -66,9 +66,12 @@ if (ready) {
     undock();
     const m = journey.mix;
     const j = m > 0 ? journey.pose() : null;
-    for (const k of ['x', 'y', 'scale', 'rotation', 'opacity']) {
+    for (const k of ['x', 'y', 'scale', 'rotation']) {
       set[k](j ? scrollPose[k] + (j[k] - scrollPose[k]) * m : scrollPose[k]);
     }
+    // Opacity follows the mix more steeply, so a passport passing between a hidden rest and the
+    // journey shows up only near its stage and never drifts half-faded over the text.
+    set.opacity(j ? scrollPose.opacity + (j.opacity - scrollPose.opacity) * m ** 3 : scrollPose.opacity);
   }
   gsap.ticker.add(render);
 
@@ -113,8 +116,10 @@ if (ready) {
     const keys = [at(0, hand.cx, hand.cy, 1, 0)];
 
     // The hand-off: forward and a little sideways, slightly larger, as if handed to the visitor.
-    // On a phone it leaves toward the left edge, where it waits, so it never crosses the text.
-    keys.push(at(vh * 0.5, phone ? edge + (pw * 1.15) / 2 : hand.cx + vw * 0.14, vh * (phone ? 0.5 : 0.4), phone ? 1.15 : 1.28, phone ? 0 : 4));
+    // On a phone it lifts up and to the left while the photo is still on screen, then fades
+    // before the next title arrives.
+    if (phone) keys.push(at(vh * 0.35, edge + (pw * 1.1) / 2 + 10, vh * 0.34, 1.1, 0));
+    else keys.push(at(vh * 0.5, hand.cx + vw * 0.14, vh * 0.4, 1.28, 4));
 
     // Then one continuous glide: it reaches each page's resting place when that page is
     // centred on screen, and is already on its way to the next one as the page scrolls on.
@@ -155,7 +160,8 @@ if (ready) {
     trigger = ScrollTrigger.create({
       start: 0,
       end: () => max,
-      scrub: reduceMotion ? 0.3 : 1,
+      // A phone follows the thumb closely; a lag there reads as the passport sliding off course.
+      scrub: phone ? 0.35 : reduceMotion ? 0.3 : 1,
       animation: tl,
     });
     tl.progress(trigger.progress);
@@ -302,7 +308,7 @@ if (ready) {
       state = 'stopped';
       leftAt = performance.now();
       stages.forEach((st) => st.classList.remove('is-active'));
-      mixTo(0, 0.9);
+      mixTo(0, phone ? 0.6 : 0.9);
     }
 
     api.watch = () => {
