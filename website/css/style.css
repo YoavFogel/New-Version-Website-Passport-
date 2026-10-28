@@ -120,3 +120,8 @@ h1, p, figure { margin: 0; }
   .logo { width: 150px; }
   .hero-figure { grid-column: 1; grid-row: 2; width: min(100%, calc(68svh * 1122 / 1402)); }
 }
+
+/* Line masks for the paragraphs the story reveals line by line. */
+.ln { display: block; overflow: clip; overflow-clip-margin: 0.2em; }
+.ln-in { display: block; will-change: transform; }
+.statement-file .word { display: inline-block; }

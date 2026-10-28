@@ -130,71 +130,155 @@ if (ready) {
   }
 
   // ---------- About: the story is revealed by the scroll itself ----------
-  // Every reveal is scrubbed to the scroll position, so it moves with the reader and
-  // stays put once read. Under reduced motion the text is simply there.
-  function story() {
-    if (reduceMotion) return;
-    const mobile = window.innerWidth <= 900;
-    const rise = mobile ? 14 : 26;
+  // Every move is scrubbed to the scroll position: the text arrives as the reader scrolls
+  // and stays once read. Under reduced motion it still arrives, with shorter, calmer moves.
+  // The words themselves are never altered; spans only wrap whole words and lines.
+  const storyTriggers = [];
+  const track = (tween) => { if (tween.scrollTrigger) storyTriggers.push(tween.scrollTrigger); return tween; };
 
-    // Headings: each word (or line) rises out of its own mask, one after another.
+  // Wrap a paragraph's lines in masks, measured from where the browser actually breaks them.
+  function splitLines(p) {
+    if (!p.dataset.text) p.dataset.text = p.textContent.trim().replace(/\s+/g, ' ');
+    const words = p.dataset.text.split(' ');
+    p.textContent = '';
+    const spans = words.map((w, i) => {
+      const s = document.createElement('span');
+      s.textContent = w;
+      p.append(s, i < words.length - 1 ? ' ' : '');
+      return s;
+    });
+    const lines = [];
+    let top = null;
+    spans.forEach((s) => {
+      if (top === null || Math.abs(s.offsetTop - top) > 4) { lines.push([]); top = s.offsetTop; }
+      lines[lines.length - 1].push(s.textContent);
+    });
+    p.textContent = '';
+    return lines.map((ws) => {
+      const mask = document.createElement('span');
+      mask.className = 'ln';
+      const inner = document.createElement('span');
+      inner.className = 'ln-in';
+      inner.textContent = ws.join(' ');
+      mask.append(inner);
+      p.append(mask, ' ');
+      return inner;
+    });
+  }
+
+  function story() {
+    storyTriggers.splice(0).forEach((t) => t.kill(true));
+    const mobile = window.innerWidth <= 900;
+    const calm = reduceMotion;
+    const zone = (start, end) => ({ start, end: mobile ? end.replace(/(\d+)%/, (m, n) => `${Math.min(+n + 10, 95)}%`) : end, scrub: 0.8 });
+
+    // Headings: each word or line rises out of its own mask, one after another.
     document.querySelectorAll('[data-mask]').forEach((title) => {
-      const words = [...title.querySelectorAll('.w')].map((w) => {
-        const inner = document.createElement('span');
-        inner.append(...w.childNodes);
-        w.append(inner);
-        return inner;
-      });
-      gsap.fromTo(words, { yPercent: 105 }, {
-        yPercent: 0, ease: 'none', stagger: 0.35,
-        scrollTrigger: { trigger: title, start: 'top 92%', end: mobile ? 'top 62%' : 'top 52%', scrub: 0.6 },
-      });
+      let words = [...title.querySelectorAll('.w > span')];
+      if (!words.length) {
+        words = [...title.querySelectorAll('.w')].map((w) => {
+          const inner = document.createElement('span');
+          inner.append(...w.childNodes);
+          w.append(inner);
+          return inner;
+        });
+      }
+      track(gsap.fromTo(words, { yPercent: 110, rotate: calm ? 0 : 2 }, {
+        yPercent: 0, rotate: 0, ease: 'none', stagger: 0.4,
+        scrollTrigger: { trigger: title, ...zone('top 95%', 'top 45%') },
+      }));
     });
 
-    // Paragraphs and statements: a soft rise as each one reaches the reading zone.
+    // Paragraphs: line by line, each line rising out of its mask, like the page writing itself.
+    document.querySelectorAll('[data-lines]').forEach((p) => {
+      const lines = splitLines(p);
+      track(gsap.fromTo(lines, { yPercent: 105, opacity: 0 }, {
+        yPercent: 0, opacity: 1, ease: 'none', stagger: 0.25,
+        scrollTrigger: { trigger: p, ...zone('top 92%', 'bottom 62%') },
+      }));
+    });
+
+    // Large statements: they slide in from the reading side and come into focus.
+    document.querySelectorAll('[data-slide]').forEach((el) => {
+      track(gsap.fromTo(el, { xPercent: calm ? 4 : 12, opacity: 0, filter: calm ? 'none' : 'blur(10px)' }, {
+        xPercent: 0, opacity: 1, filter: 'blur(0px)', ease: 'none',
+        scrollTrigger: { trigger: el, ...zone('top 95%', 'top 55%') },
+      }));
+    });
+
+    // The three transparency sentences arrive one after another, each from the right.
+    const seq = [...document.querySelectorAll('[data-seq]')];
+    if (seq.length) {
+      track(gsap.fromTo(seq, { x: calm ? 30 : 120, opacity: 0 }, {
+        x: 0, opacity: 1, ease: 'none', stagger: 0.6,
+        scrollTrigger: { trigger: seq[0].parentNode, ...zone('top 90%', 'bottom 55%') },
+      }));
+    }
+
+    // Small lines that close the story.
     gsap.utils.toArray('[data-reveal]').forEach((el) => {
-      gsap.fromTo(el, { opacity: 0, y: rise }, {
+      track(gsap.fromTo(el, { opacity: 0, y: 20 }, {
         opacity: 1, y: 0, ease: 'none',
-        scrollTrigger: { trigger: el, start: 'top 94%', end: mobile ? 'top 74%' : 'top 66%', scrub: 0.6 },
-      });
+        scrollTrigger: { trigger: el, ...zone('top 96%', 'top 75%') },
+      }));
     });
 
     // The highlight under "רצון לעשות את הדברים קצת אחרת" is drawn as it is read (RTL: from the right).
     document.querySelectorAll('[data-marker]').forEach((m) => {
-      gsap.fromTo(m, { backgroundSize: '0% 0.34em' }, {
+      track(gsap.fromTo(m, { backgroundSize: '0% 0.34em' }, {
         backgroundSize: '100% 0.34em', ease: 'none',
-        scrollTrigger: { trigger: m, start: 'top 78%', end: 'top 48%', scrub: 0.6 },
-      });
+        scrollTrigger: { trigger: m, ...zone('top 80%', 'top 45%') },
+      }));
     });
 
     // The file statement lights up word by word while it is read. Words stay whole.
     document.querySelectorAll('[data-words]').forEach((p) => {
-      const words = p.textContent.trim().split(/\s+/);
-      p.textContent = '';
-      words.forEach((word, i) => {
-        const span = document.createElement('span');
-        span.className = 'word';
-        span.textContent = word;
-        p.append(span, i < words.length - 1 ? ' ' : '');
-      });
-      gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.16 }, {
-        opacity: 1, ease: 'none', stagger: 0.12,
-        scrollTrigger: { trigger: p, start: 'top 80%', end: mobile ? 'bottom 55%' : 'bottom 45%', scrub: 0.6 },
-      });
+      if (!p.querySelector('.word')) {
+        const words = p.textContent.trim().split(/\s+/);
+        p.textContent = '';
+        words.forEach((word, i) => {
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.textContent = word;
+          p.append(span, i < words.length - 1 ? ' ' : '');
+        });
+      }
+      track(gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.14, y: calm ? 0 : 10 }, {
+        opacity: 1, y: 0, ease: 'none', stagger: 0.12,
+        scrollTrigger: { trigger: p, ...zone('top 85%', 'bottom 45%') },
+      }));
     });
 
-    // The large 2017 drifts slower than the page, a quiet sense of depth.
+    // The year counts up to 2017 as it rises, slower than the page.
+    document.querySelectorAll('[data-count]').forEach((el) => {
+      const from = Number(el.dataset.count);
+      const to = Number(el.dataset.final || (el.dataset.final = el.textContent.trim()));
+      const n = { v: from };
+      track(gsap.fromTo(n, { v: from }, {
+        v: to, ease: 'none',
+        onUpdate: () => { el.textContent = String(Math.round(n.v)); },
+        scrollTrigger: { trigger: el, ...zone('top 98%', 'top 40%') },
+      }));
+    });
     document.querySelectorAll('[data-drift]').forEach((el) => {
-      gsap.fromTo(el, { y: mobile ? 20 : 60 }, {
+      track(gsap.fromTo(el, { y: mobile ? 30 : 90 }, {
         y: mobile ? -20 : -60, ease: 'none',
         scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true },
-      });
+      }));
+    });
+
+    // The dark chapter opens like a curtain from the middle of the screen.
+    document.querySelectorAll('[data-curtain]').forEach((el) => {
+      track(gsap.fromTo(el, { clipPath: `inset(0% ${mobile ? 6 : 12}% 0% ${mobile ? 6 : 12}%)` }, {
+        clipPath: 'inset(0% 0% 0% 0%)', ease: 'none',
+        scrollTrigger: { trigger: el, start: 'top 100%', end: 'top 25%', scrub: 0.8 },
+      }));
     });
   }
-  story();
+
 
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { build(); ScrollTrigger.refresh(); };
+  const start = () => { story(); build(); ScrollTrigger.refresh(); };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });
