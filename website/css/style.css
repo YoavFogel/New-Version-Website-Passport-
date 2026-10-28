@@ -1,0 +1,67 @@
+/* EU Passport website, built section by section. */
+
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-hebrew-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-hebrew-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-hebrew-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-hebrew-900-normal.woff2") format("woff2"); font-weight: 900; font-display: swap; unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Heebo"; src: url("../assets/fonts/heebo-latin-900-normal.woff2") format("woff2"); font-weight: 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+:root {
+  --navy-deep: #1b2448;
+  --navy: #273462;
+  --navy-soft: #5a6693;
+  --yellow: #f2e21a;
+  --ground: #f4f6fb;
+  --paper: #ffffff;
+  --ink: #1d2433;
+  --margin: clamp(20px, 3vw, 48px);
+  /* Put "Almoni" first once its licensed files are in assets/fonts. */
+  --font: "Heebo", "Segoe UI", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html:not(.lenis) { scroll-behavior: smooth; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font); font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+img { display: block; max-width: 100%; }
+h1, p, figure { margin: 0; }
+:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+.skip-link { position: absolute; inset-inline-start: var(--margin); top: -60px; z-index: 100; background: var(--navy); color: #fff; padding: 10px 16px; font-weight: 700; }
+.skip-link:focus { top: 12px; }
+
+/* ---------- Opening screen ---------- */
+.hero { position: relative; height: 100svh; min-height: 560px; overflow: clip; display: grid; grid-template-columns: 1fr 1fr; padding-inline: var(--margin); }
+.hero-bar { position: absolute; top: 0; inset-inline: var(--margin); padding-block: 28px; z-index: 5; }
+.logo { width: clamp(150px, 13vw, 210px); height: auto; }
+.hero-text { grid-column: 1; grid-row: 1; align-self: center; padding-top: 6svh; }
+.hero h1 { font-size: clamp(44px, 5.6vw, 92px); line-height: 1; letter-spacing: -0.03em; font-weight: 900; color: var(--navy-deep); }
+.hero h1 .brand { white-space: nowrap; }
+.hero-sub { margin-top: 0.45em; font-size: clamp(26px, 2.8vw, 46px); line-height: 1.15; font-weight: 500; color: var(--navy); }
+
+.hero-figure { grid-column: 2; grid-row: 1; align-self: end; justify-self: center; position: relative; width: min(100%, calc(90svh * 1122 / 1402)); aspect-ratio: 1122 / 1402; }
+.hero-man { width: 100%; height: 100%; }
+/* Layer positions, as fractions of the 1122 × 1402 photograph. */
+.passport { position: absolute; left: 22.727%; top: 45.007%; width: 24.421%; height: auto; z-index: 2; pointer-events: none; user-select: none; will-change: transform; }
+.hero-thumb { position: absolute; left: 26.203%; top: 61.84%; width: 9.002%; height: auto; z-index: 3; pointer-events: none; user-select: none; }
+/* Once main.js takes over, the same passport element floats above the page. */
+.passport.is-floating { position: fixed; left: 0; top: 0; z-index: 40; transform-origin: 50% 50%; }
+.hero-thumb.is-above { z-index: 41; }
+
+/* ---------- Empty pages, to be built one at a time ---------- */
+.page { position: relative; min-height: 100svh; display: grid; place-items: center; padding-inline: var(--margin); }
+.page:nth-child(odd) { background: var(--paper); }
+.page-label { font-size: 15px; color: var(--navy-soft); opacity: 0.6; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .hero-text { grid-column: 1; grid-row: 1; align-self: start; padding: calc(20px + 52px + 3svh) 0 0; text-align: center; }
+  .hero h1 { font-size: clamp(34px, 10vw, 46px); }
+  .hero h1 .brand { display: block; margin-top: 0.08em; }
+  .hero-sub { font-size: clamp(21px, 6vw, 26px); }
+  .hero-bar { display: flex; justify-content: center; padding-block: 20px 0; }
+  .logo { width: 150px; }
+  .hero-figure { grid-column: 1; grid-row: 2; width: min(100%, calc(68svh * 1122 / 1402)); }
+}
