@@ -37,8 +37,72 @@
   <main id="main">
     <!-- Empty pages, built one by one. data-passport says where the passport rests while
          the section is on screen: side (start | end | center), height in vh, scale. -->
-    <section class="page" id="s2" data-passport="end 22 1" aria-label="סקשן 2"><p class="page-label">סקשן 2</p></section>
-    <section class="page" id="s3" data-passport="start 30 1" aria-label="סקשן 3"><p class="page-label">סקשן 3</p></section>
+    <!-- About: the story told in three chapters as the visitor scrolls.
+         Every word below is the approved copy; js/main.js only animates it. -->
+    <section class="about" id="about" aria-labelledby="about-title">
+      <div class="about-wrap">
+        <header class="about-head" data-passport="end 30 1" data-passport-phone="hide 24 1">
+          <h2 class="about-title" id="about-title" data-mask><span class="w">קצת</span> <span class="w">עלינו</span></h2>
+          <p class="about-lede" data-reveal>לפני שליווינו אחרים בדרך לאזרחות רומנית, עברנו את אותה הדרך בעצמנו.</p>
+        </header>
+
+        <!-- Chapter 1: where it started -->
+        <div class="chapter chapter-origins" data-passport="end 34 1" data-passport-phone="hide 30 1">
+          <p class="year" aria-hidden="true" data-drift>2017</p>
+          <div class="read">
+            <p data-reveal>הסיפור של אי.יו פספורט התחיל בשנת 2017, כאשר עו"ד אביחי פוגל-רונן ובני משפחתו יצאו למסע אישי לקבלת אזרחות רומנית.</p>
+            <p data-reveal>כמו משפחות רבות אחרות, גם אנחנו מצאנו את עצמנו מתמודדים עם תהליך לא מוכר, מסמכים שצריך לאתר, דרישות של רשויות שונות, זמני המתנה ולא מעט שאלות שנותרו ללא תשובות בדרך.</p>
+            <p data-reveal>אבל מעל הכול, הבנו עד כמה חשוב לדעת שיש מישהו שמכיר את התיק שלכם, מסביר מה קורה בכל שלב ולוקח אחריות על התהליך.</p>
+            <p data-reveal>לאחר שסיימנו את התהליך המשפחתי שלנו, אביחי ובנו יואב החליטו לקחת את הניסיון שצברו, את ההיכרות האישית עם האתגרים ואת ההבנה של צורכי הלקוח, ולהקים את אי.יו פספורט.</p>
+          </div>
+          <p class="statement statement-born" data-reveal>משרד משפחתי שנולד מתוך חוויה אישית, ומתוך <span class="marker" data-marker>רצון לעשות את הדברים קצת אחרת.</span></p>
+        </div>
+
+        <!-- Chapter 2: personal responsibility -->
+        <div class="chapter chapter-family" data-passport="end 48 0.95" data-passport-phone="hide 40 1">
+          <h3 class="chapter-title" data-mask>
+            <span class="w line">משפחה אחת,</span>
+            <span class="w line">אלפי מסמכים,</span>
+            <span class="w line">אחריות אחת</span>
+          </h3>
+          <div class="read">
+            <p data-reveal>מהיום הראשון היה לנו ברור שלקוח שמפקיד בידינו את התהליך לקבלת האזרחות הרומנית שלו צריך לקבל הרבה יותר מטיפול במסמכים.</p>
+            <p data-reveal>רצינו ליצור מקום שבו כל לקוח יודע מי מטפל בו, מה כבר נעשה בתיק שלו, מה עדיין נדרש ומה צפוי בהמשך הדרך.</p>
+            <p data-reveal>מתוך התפיסה הזו בנינו את אופן העבודה שלנו, המבוסס על ליווי אישי, היכרות מעמיקה עם כל תיק ולקיחת אחריות על התהליך מתחילתו ועד סופו.</p>
+          </div>
+          <p class="statement statement-file" data-words>מבחינתנו, תיק אזרחות אינו רק אוסף מסמכים. מאחוריו נמצאים משפחה, היסטוריה אישית ואמון שניתן בנו.</p>
+        </div>
+      </div>
+
+      <!-- Chapter 3: transparency, on the dark field -->
+      <div class="chapter chapter-open" data-passport="end 26 1.05" data-passport-phone="hide 22 1">
+        <div class="about-wrap">
+          <h3 class="chapter-title chapter-title-open" data-mask>
+            <span class="w line">שקיפות היא לא הבטחה.</span>
+            <span class="w line">היא דרך עבודה.</span>
+          </h3>
+          <div class="read">
+            <p data-reveal>תחום האזרחות הרומנית משתנה ומתפתח, ולעיתים גם הליך שמתנהל כראוי עשוי להימשך זמן רב או להיתקל בדרישות חדשות.</p>
+            <p data-reveal>לכן חשוב לנו שהצוות שלנו יכיר את הוראות החוק, את הנהלים העדכניים ואת דרישות הרשויות. אנחנו מקפידים על הכשרה מקצועית שוטפת ועל התעדכנות בשינויים הרלוונטיים.</p>
+            <p data-reveal>אנחנו מאמינים שלקוחותינו זכאים לקבל תמונה ברורה ואמיתית של מצבם.</p>
+          </div>
+          <p class="sequence">
+            <span class="seq" data-reveal>כשיש התקדמות, אנחנו מעדכנים.</span>
+            <span class="seq" data-reveal>כשמתעוררת בעיה, אנחנו מציפים אותה.</span>
+            <span class="seq" data-reveal>וכשקיימת אי-ודאות, אנחנו אומרים זאת באופן גלוי.</span>
+          </p>
+          <div class="read">
+            <p data-reveal>מבחינתנו, אמון לא נבנה מהבטחות גדולות, אלא מהתנהלות עקבית, יושרה ותקשורת פתוחה לאורך הדרך.</p>
+          </div>
+          <div class="about-close">
+            <p class="close-story" data-reveal>מאחורי כל בקשה לאזרחות יש סיפור משפחתי, ולעיתים גם קשר היסטורי שמחבר בין דורות ומדינות.</p>
+            <p class="close-invite" data-reveal>אנחנו נשמח לקחת חלק בסיפור שלכם.</p>
+            <p class="close-sign" data-reveal>אי.יו פספורט | הדרך שלכם לאזרחות רומנית, בליווי אישי ומשפחתי.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="page" id="s3" data-passport="end 30 1" aria-label="סקשן 3"><p class="page-label">סקשן 3</p></section>
     <section class="page" id="s4" data-passport="end 40 0.95" aria-label="סקשן 4"><p class="page-label">סקשן 4</p></section>
     <section class="page" id="s5" data-passport="start 24 1" aria-label="סקשן 5"><p class="page-label">סקשן 5</p></section>
     <section class="page" id="s6" data-passport="center 18 1.1" aria-label="סקשן 6"><p class="page-label">סקשן 6</p></section>

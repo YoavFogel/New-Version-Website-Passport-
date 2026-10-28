@@ -34,7 +34,7 @@ if (ready) {
   function dock() {
     docked = true;
     passport.classList.remove('is-floating');
-    gsap.set(passport, { clearProps: 'transform,width' });
+    gsap.set(passport, { clearProps: 'transform,width,opacity' });
   }
   // Floating: the same element, fixed to the viewport and moved by the timeline.
   function undock() {
@@ -65,13 +65,17 @@ if (ready) {
     };
 
     // Keyframes: scroll position -> centre of the passport in the viewport, scale, rotation.
-    const at = (s, cx, cy, scale, rotation) => ({
-      s, x: cx - pw / 2, y: cy - ph / 2, scale, rotation: reduceMotion ? 0 : rotation,
+    const at = (s, cx, cy, scale, rotation, opacity = 1) => ({
+      s, x: cx - pw / 2, y: cy - ph / 2, scale, rotation: reduceMotion ? 0 : rotation, opacity,
     });
     const edge = phone ? 18 : Math.max(32, vw * 0.06);
+    const PEEK = 16; // px of passport left on screen when it waits at the edge, inside the side margin
     const sideX = (side, scale) => {
       const half = (pw * scale) / 2;
       if (side === 'center') return vw / 2;
+      // Peeking: mostly off the screen edge, so it never sits on text on a phone.
+      if (side === 'peek-end' || side === 'hide') return -half + PEEK;
+      if (side === 'peek-start') return vw + half - PEEK;
       // RTL: "start" is the right-hand side, "end" the left.
       return side === 'start' ? vw - edge - half : edge + half;
     };
@@ -79,28 +83,32 @@ if (ready) {
     const keys = [at(0, hand.cx, hand.cy, 1, 0)];
 
     // The hand-off: forward and a little sideways, slightly larger, as if handed to the visitor.
-    keys.push(at(vh * 0.5, phone ? vw * 0.5 : hand.cx + vw * 0.14, vh * (phone ? 0.42 : 0.4), phone ? 1.2 : 1.28, 4));
+    // On a phone it leaves toward the left edge, where it waits, so it never crosses the text.
+    keys.push(at(vh * 0.5, phone ? edge + (pw * 1.15) / 2 : hand.cx + vw * 0.14, vh * (phone ? 0.5 : 0.4), phone ? 1.15 : 1.28, phone ? 0 : 4));
 
     // Then one continuous glide: it reaches each page's resting place when that page is
     // centred on screen, and is already on its way to the next one as the page scrolls on.
     pages.forEach((page) => {
-      const [side, top, sc] = page.dataset.passport.split(' ');
+      const spec = (phone && page.dataset.passportPhone) || page.dataset.passport;
+      const [side, top, sc] = spec.split(' ');
       const scale = Number(sc) * (phone ? 0.8 : 1);
       const cy = vh * (Number(top) / 100) + (ph * scale) / 2;
-      const rot = side === 'start' ? -3 : side === 'end' ? 3 : 0;
-      const centred = page.offsetTop + page.offsetHeight / 2 - vh / 2;
+      const rot = /peek/.test(side) ? 0 : side === 'start' ? -3 : side === 'end' ? 3 : 0;
+      const box = page.getBoundingClientRect();
+      const centred = box.top + scrollY + box.height / 2 - vh / 2;
       const s = Math.max(centred, keys[keys.length - 1].s + vh * 0.3);
-      keys.push(at(s, sideX(side, scale), cy, scale, rot));
+      // 'hide' (phones, long reading): it shrinks and fades out at the edge until the text is past.
+      keys.push(at(s, sideX(side, scale), cy, side === 'hide' ? scale * 0.6 : scale, rot, side === 'hide' ? 0 : 1));
     });
 
     const max = Math.max(ScrollTrigger.maxScroll(window), 1);
     const tl = gsap.timeline({ paused: true });
     const [first, ...rest] = keys;
-    tl.set(passport, { x: first.x, y: first.y, scale: first.scale, rotation: first.rotation }, 0);
+    tl.set(passport, { x: first.x, y: first.y, scale: first.scale, rotation: first.rotation, opacity: 1 }, 0);
     rest.forEach((k, i) => {
       const prev = keys[i];
       tl.to(passport, {
-        x: k.x, y: k.y, scale: k.scale, rotation: k.rotation,
+        x: k.x, y: k.y, scale: k.scale, rotation: k.rotation, opacity: k.opacity,
         duration: Math.max(k.s - prev.s, 1),
         ease: i === 0 ? 'power1.out' : 'sine.inOut',
       }, prev.s);
@@ -120,6 +128,70 @@ if (ready) {
     tl.progress(trigger.progress);
     if (tl.time() > 0.5) undock(); else dock();
   }
+
+  // ---------- About: the story is revealed by the scroll itself ----------
+  // Every reveal is scrubbed to the scroll position, so it moves with the reader and
+  // stays put once read. Under reduced motion the text is simply there.
+  function story() {
+    if (reduceMotion) return;
+    const mobile = window.innerWidth <= 900;
+    const rise = mobile ? 14 : 26;
+
+    // Headings: each word (or line) rises out of its own mask, one after another.
+    document.querySelectorAll('[data-mask]').forEach((title) => {
+      const words = [...title.querySelectorAll('.w')].map((w) => {
+        const inner = document.createElement('span');
+        inner.append(...w.childNodes);
+        w.append(inner);
+        return inner;
+      });
+      gsap.fromTo(words, { yPercent: 105 }, {
+        yPercent: 0, ease: 'none', stagger: 0.35,
+        scrollTrigger: { trigger: title, start: 'top 92%', end: mobile ? 'top 62%' : 'top 52%', scrub: 0.6 },
+      });
+    });
+
+    // Paragraphs and statements: a soft rise as each one reaches the reading zone.
+    gsap.utils.toArray('[data-reveal]').forEach((el) => {
+      gsap.fromTo(el, { opacity: 0, y: rise }, {
+        opacity: 1, y: 0, ease: 'none',
+        scrollTrigger: { trigger: el, start: 'top 94%', end: mobile ? 'top 74%' : 'top 66%', scrub: 0.6 },
+      });
+    });
+
+    // The highlight under "רצון לעשות את הדברים קצת אחרת" is drawn as it is read (RTL: from the right).
+    document.querySelectorAll('[data-marker]').forEach((m) => {
+      gsap.fromTo(m, { backgroundSize: '0% 0.34em' }, {
+        backgroundSize: '100% 0.34em', ease: 'none',
+        scrollTrigger: { trigger: m, start: 'top 78%', end: 'top 48%', scrub: 0.6 },
+      });
+    });
+
+    // The file statement lights up word by word while it is read. Words stay whole.
+    document.querySelectorAll('[data-words]').forEach((p) => {
+      const words = p.textContent.trim().split(/\s+/);
+      p.textContent = '';
+      words.forEach((word, i) => {
+        const span = document.createElement('span');
+        span.className = 'word';
+        span.textContent = word;
+        p.append(span, i < words.length - 1 ? ' ' : '');
+      });
+      gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.16 }, {
+        opacity: 1, ease: 'none', stagger: 0.12,
+        scrollTrigger: { trigger: p, start: 'top 80%', end: mobile ? 'bottom 55%' : 'bottom 45%', scrub: 0.6 },
+      });
+    });
+
+    // The large 2017 drifts slower than the page, a quiet sense of depth.
+    document.querySelectorAll('[data-drift]').forEach((el) => {
+      gsap.fromTo(el, { y: mobile ? 20 : 60 }, {
+        y: mobile ? -20 : -60, ease: 'none',
+        scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true },
+      });
+    });
+  }
+  story();
 
   // Keyframes depend on the layout, so they are measured again after load and on resize.
   const start = () => { build(); ScrollTrigger.refresh(); };
