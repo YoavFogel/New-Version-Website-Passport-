@@ -309,3 +309,65 @@ h1, p, figure { margin: 0; }
   .sv-close { padding-block: 72px 120px; }
 }
 .sv-h .line > span, .sv-final .fl-in { text-wrap: balance; }
+
+/* ---------- Questions and answers: cards on a half circle ---------- */
+/* Without the script the cards are a plain grid with each answer under its question.
+   With it (.is-wheel) they stand on an arc; the one at the top is turned over on a click. */
+.faq { background: var(--ground); padding-block: clamp(100px, 15vh, 170px) clamp(80px, 12vh, 140px); overflow: clip; }
+.faq-head { text-align: center; padding-bottom: clamp(32px, 6vh, 64px); }
+.faq .about-wrap > .faq-head { grid-column: 1 / -1; }
+.faq-title { margin: 0; font-size: clamp(48px, 6.4vw, 108px); line-height: 1; letter-spacing: -0.035em; font-weight: 900; color: var(--navy-deep); }
+.faq-sub { margin-top: 0.5em; font-size: clamp(20px, 1.9vw, 28px); font-weight: 500; color: var(--navy); }
+
+.faq-stage { --cw: 300px; --ch: 400px; position: relative; }
+.qa-wheel { margin: 0 auto; padding: 0 var(--margin); list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1240px; }
+.qa-card { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer; perspective: 1400px; -webkit-tap-highlight-color: transparent; }
+.qa-card:focus-visible { outline: 3px solid var(--yellow); outline-offset: 6px; border-radius: 22px; }
+.qa-inner { position: relative; display: grid; transform-style: preserve-3d; transition: transform 850ms cubic-bezier(.2, .8, .2, 1); }
+.qa-face { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 18px; padding: 30px 28px; border-radius: 22px; -webkit-backface-visibility: hidden; backface-visibility: hidden; text-align: start; }
+/* The card's back: the question. */
+.qa-front { background: var(--navy-deep); color: #fff; box-shadow: 0 18px 40px rgba(27, 36, 72, .22); background-image: radial-gradient(circle at 85% 12%, rgba(242, 226, 26, .16), transparent 34%), repeating-linear-gradient(135deg, rgba(255, 255, 255, .035) 0 2px, transparent 2px 14px); }
+.qa-num { font-size: 15px; font-weight: 700; letter-spacing: 0.14em; color: var(--yellow); display: flex; align-items: center; gap: 12px; }
+.qa-num::after { content: ""; width: 40px; height: 2px; background: currentColor; }
+.qa-q { font-size: clamp(24px, 2vw, 30px); line-height: 1.2; font-weight: 800; letter-spacing: -0.015em; text-wrap: balance; }
+.qa-hint { margin-top: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: #aab3d1; }
+.qa-hint::before { content: ""; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--yellow); background: radial-gradient(circle, var(--yellow) 0 4px, transparent 5px); }
+/* The face it turns to: the answer. */
+.qa-back { background: var(--paper); color: var(--ink); box-shadow: 0 18px 40px rgba(27, 36, 72, .14); }
+.qa-back .qa-num { color: var(--navy); }
+.qa-a { font-size: clamp(17px, 1.3vw, 19px); line-height: 1.6; text-wrap: pretty; }
+
+/* The wheel. */
+.faq.is-wheel .qa-wheel { display: block; position: relative; max-width: none; padding: 0; height: calc(var(--ch) + 110px); touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
+.faq.is-wheel .qa-wheel.is-dragging { cursor: grabbing; }
+.faq.is-wheel .qa { position: absolute; left: 50%; top: 20px; width: var(--cw); height: var(--ch); margin-left: calc(var(--cw) / -2); transform-origin: 50% 50%; will-change: transform, opacity; }
+.faq.is-wheel .qa-card, .faq.is-wheel .qa-inner { height: 100%; }
+.faq.is-wheel .qa-inner { grid-template-rows: 100%; }
+.faq.is-wheel .qa-back { transform: rotateY(180deg); overflow: auto; }
+.faq.is-wheel .qa.is-flipped .qa-inner { transform: rotateY(180deg); }
+.faq.is-wheel .qa:not(.is-active) .qa-card { cursor: inherit; }
+.faq.is-wheel .qa:not(.is-active) .qa-hint { opacity: 0; }
+.qa-hint { transition: opacity 400ms; }
+.faq:not(.is-wheel) .qa-face { position: relative; }
+.faq:not(.is-wheel) .qa-hint { display: none; }
+.faq:not(.is-wheel) .qa-back { border-radius: 0 0 22px 22px; box-shadow: none; }
+.faq:not(.is-wheel) .qa-front { border-radius: 22px 22px 0 0; box-shadow: none; }
+.faq:not(.is-wheel) .qa-inner { grid-template-rows: auto auto; }
+.faq:not(.is-wheel) .qa-back { grid-area: 2 / 1; }
+
+.qa-nav { display: none; }
+.faq.is-wheel .qa-nav { display: flex; align-items: center; justify-content: center; gap: 28px; margin-top: 8px; }
+.qa-arrow { all: unset; box-sizing: border-box; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: var(--paper); color: var(--navy-deep); box-shadow: 0 0 0 1.5px #d5dbec; transition: background-color 250ms, color 250ms, box-shadow 250ms; }
+.qa-arrow:hover { background: var(--navy-deep); color: #fff; box-shadow: none; }
+.qa-arrow:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+.qa-arrow svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.qa-count { margin: 0; min-width: 4.5em; text-align: center; font-size: 16px; font-weight: 500; color: var(--navy-soft); font-variant-numeric: tabular-nums; }
+.qa-count b { font-size: 22px; color: var(--navy-deep); }
+
+@media (max-width: 900px) {
+  .faq-stage { --cw: min(74vw, 300px); --ch: min(94vw, 370px); }
+  .qa-face { padding: 26px 22px; gap: 14px; }
+  .qa-q { font-size: 24px; }
+  .qa-a { font-size: 17px; }
+  .faq.is-wheel .qa-wheel { height: calc(var(--ch) + 70px); }
+}

@@ -601,8 +601,148 @@ if (ready) {
   }
 
 
+  // ---------- Questions and answers: a wheel of cards ----------
+  // The cards stand on a half circle. One value, `rot`, says which card is at the top; every
+  // card's place on the arc follows from it, so arrows, keys, a drag or a click on a side card
+  // all just move `rot`. The card at the top turns over on a click to show its answer.
+  // The scroll only opens the fan as the section arrives; it never moves the wheel itself.
+  const faq = (() => {
+    const section = document.getElementById('faq');
+    const wheel = document.getElementById('qa-wheel');
+    const api = { build() {} };
+    if (!section || !wheel) return api;
+    const items = [...wheel.querySelectorAll('.qa')];
+    const N = items.length;
+    const now = section.querySelector('.qa-now');
+    const st = { rot: 0, fan: 0 };
+    let geo = { R: 1100, step: 17, px: 330 };
+    let active = 0;
+    let spin = null;
+    section.classList.add('is-wheel');
+
+    const wrap = (d) => ((((d + N / 2) % N) + N) % N) - N / 2;
+
+    function render() {
+      items.forEach((it, i) => {
+        const d = wrap(i - st.rot);
+        const ad = Math.abs(d);
+        // RTL: the next question waits on the left.
+        const a = -d * geo.step * st.fan * Math.PI / 180;
+        const x = geo.R * Math.sin(a);
+        const y = geo.R * (1 - Math.cos(a)) + (1 - st.fan) * 60;
+        const scale = (1 - Math.min(ad, 3) * 0.07) * (0.92 + 0.08 * st.fan);
+        const op = Math.max(0, Math.min(1, 2.6 - ad)) * (ad < 0.5 ? 1 : st.fan);
+        it.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${(a * 180 / Math.PI).toFixed(2)}deg) scale(${scale.toFixed(3)})`;
+        it.style.opacity = op.toFixed(3);
+        it.style.zIndex = String(100 - Math.round(ad * 10));
+        it.style.visibility = op < 0.02 ? 'hidden' : 'visible';
+      });
+    }
+
+    function setActive(i) {
+      if (i === active && items[i].classList.contains('is-active')) return;
+      items.forEach((it, k) => {
+        const on = k === i;
+        it.classList.toggle('is-active', on);
+        const btn = it.querySelector('.qa-card');
+        btn.tabIndex = on ? 0 : -1;
+        if (!on && it.classList.contains('is-flipped')) flip(it, false);
+      });
+      active = i;
+      if (now) now.textContent = String(i + 1).padStart(2, '0');
+    }
+
+    function flip(it, on) {
+      it.classList.toggle('is-flipped', on);
+      it.querySelector('.qa-card').setAttribute('aria-expanded', String(on));
+    }
+
+    // Turn the wheel to card i by the short way round.
+    function go(i, dur = reduceMotion ? 0.5 : 0.75) {
+      const target = st.rot + wrap(i - st.rot);
+      spin?.kill();
+      spin = gsap.to(st, { rot: target, duration: dur, ease: 'power3.out', onUpdate: render, onComplete: () => { st.rot = ((Math.round(st.rot) % N) + N) % N; render(); } });
+      setActive(((Math.round(target) % N) + N) % N);
+    }
+
+    section.querySelector('.qa-next').addEventListener('click', () => go(active + 1));
+    section.querySelector('.qa-prev').addEventListener('click', () => go(active - 1));
+    section.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      go(active + (e.key === 'ArrowLeft' ? 1 : -1));
+      items[active].querySelector('.qa-card').focus({ preventScroll: true });
+    });
+
+    // A drag turns the wheel with the finger; a flick carries on to the next card.
+    let drag = null;
+    let dragged = false;
+    wheel.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      spin?.kill();
+      drag = { x: e.clientX, y: e.clientY, rot: st.rot, t: performance.now(), lastX: e.clientX, v: 0, id: e.pointerId, on: false };
+      dragged = false;
+    });
+    wheel.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.on) {
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+        drag.on = true;
+        wheel.classList.add('is-dragging');
+        wheel.setPointerCapture(e.pointerId);
+      }
+      const t = performance.now();
+      drag.v = (e.clientX - drag.lastX) / Math.max(t - drag.t, 1);
+      drag.t = t; drag.lastX = e.clientX;
+      st.rot = drag.rot - dx / geo.px;
+      render();
+    });
+    const release = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (drag.on) {
+        dragged = true;
+        wheel.classList.remove('is-dragging');
+        const fling = -drag.v * 0.35; // px per ms -> cards
+        go(Math.round(st.rot + Math.max(-1, Math.min(1, fling))));
+      }
+      drag = null;
+    };
+    wheel.addEventListener('pointerup', release);
+    wheel.addEventListener('pointercancel', release);
+
+    items.forEach((it, i) => {
+      const btn = it.querySelector('.qa-card');
+      btn.addEventListener('click', () => {
+        if (dragged) { dragged = false; return; }
+        if (i === active) flip(it, !it.classList.contains('is-flipped'));
+        else go(i);
+      });
+      // Keyboard focus brings a card to the top; a pointer press is left to the click.
+      btn.addEventListener('focus', () => { if (i !== active && btn.matches(':focus-visible')) go(i); });
+    });
+
+    api.build = () => {
+      const phone = window.innerWidth <= 900;
+      const cw = items[0].offsetWidth;
+      // Neighbours stand a card's width (plus a gap) to the side.
+      const step = phone ? 12 : 16;
+      const px = cw * (phone ? 1.06 : 1.1);
+      geo = { step, px, R: px / Math.sin(step * Math.PI / 180) };
+      setActive(active);
+      // The fan opens as the cards arrive on screen, from one stack into the arc.
+      track(gsap.fromTo(st, { fan: 0 }, {
+        fan: 1, ease: 'none', onUpdate: render,
+        scrollTrigger: { trigger: wheel, start: 'top 92%', end: phone ? 'top 45%' : 'top 40%', scrub: 0.6 },
+      }));
+      render();
+    };
+    return api;
+  })();
+
+
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { story(); services(); build(); ScrollTrigger.refresh(); };
+  const start = () => { story(); services(); faq.build(); build(); ScrollTrigger.refresh(); };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });
