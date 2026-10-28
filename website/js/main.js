@@ -1,14 +1,16 @@
 // EU Passport: the passport leaves the man's hand on scroll and travels down the page.
 // One element (#passport) does the whole journey; everything is tied to the scroll position,
 // so scrolling back up plays the same path in reverse and the top puts it back in his hand.
+// The move only happens while the visitor scrolls, so it stays on under reduced motion too,
+// in a calmer form: native scrolling, no lag, no rotation.
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const ready = !reduceMotion && window.gsap && window.ScrollTrigger;
+const ready = !!(window.gsap && window.ScrollTrigger);
 
 if (ready) {
   gsap.registerPlugin(ScrollTrigger);
 
   // Smooth scroll, driven by GSAP's ticker so the passport and the page move as one.
-  if (window.Lenis) {
+  if (window.Lenis && !reduceMotion) {
     const lenis = new Lenis({ autoRaf: false, anchors: true, lerp: 0.1 });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000));
@@ -47,7 +49,7 @@ if (ready) {
     gsap.set(passport, { width: pw, x: 0, y: 0, xPercent: 0, yPercent: 0 });
 
     // Keyframes: scroll position -> centre of the passport in the viewport, scale, rotation.
-    const at = (s, cx, cy, scale, rotation) => ({ s, x: cx - pw / 2, y: cy - ph / 2, scale, rotation });
+    const at = (s, cx, cy, scale, rotation) => ({ s, x: cx - pw / 2, y: cy - ph / 2, scale, rotation: reduceMotion ? 0 : rotation });
     const edge = phone ? 18 : Math.max(32, vw * 0.06);
     const sideX = (side, scale) => {
       const half = (pw * scale) / 2;
@@ -94,7 +96,7 @@ if (ready) {
     trigger = ScrollTrigger.create({
       start: 0,
       end: () => Math.max(max, 1),
-      scrub: 0.6,
+      scrub: reduceMotion ? true : 0.6,
       animation: tl,
     });
   }
