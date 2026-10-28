@@ -176,7 +176,7 @@ if (ready) {
     let phone = false;
     let runTl = null;
     let mixTween = null;
-    let state = 'idle';                      // idle | running | stopped | done
+    let state = 'idle';                      // idle | running | stopped | done (any but running can start)
     let reached = 0;                         // next stage to show when resuming
     let watch = null;
 
@@ -258,15 +258,25 @@ if (ready) {
       return mixTween;
     }
 
+    // Entering: a short step out and back resumes where it stopped; any other return plays the
+    // journey again from stage 1. The passport always glides along the path to its starting
+    // stage, so a return in the middle of an exit never jumps.
+    let leftAt = 0;
     function run() {
       runTl?.kill();
-      const from = reached;
-      api.len = nodes[from];
-      paint();
+      const resume = state === 'stopped' && performance.now() - leftAt < 1500;
+      const from = resume ? reached : 0;
+      if (!resume) {
+        reached = 0;
+        stages.forEach((st) => st.classList.remove('is-active', 'is-visited'));
+      }
       state = 'running';
-      // Arrive: the passport leaves its scroll path and settles on the next stage.
-      mixTo(1, 1.1);
-      runTl = gsap.timeline({ delay: 1.0 });
+      const visible = api.mix > 0.05;
+      if (!visible) { api.len = nodes[from]; paint(); }
+      mixTo(1, 1.0);
+      runTl = gsap.timeline();
+      if (visible) runTl.to(api, { len: nodes[from], duration: MOVE, ease: 'power2.inOut', onUpdate: paint });
+      else runTl.to({}, { duration: 0.85 });
       runTl.call(() => setActive(from));
       for (let i = from; i < nodes.length; i++) {
         runTl.to({}, { duration: HOLD });
@@ -284,6 +294,7 @@ if (ready) {
       if (state !== 'running') return;
       runTl?.kill();
       state = 'stopped';
+      leftAt = performance.now();
       stages.forEach((st) => st.classList.remove('is-active'));
       mixTo(0, 0.9);
     }
@@ -293,14 +304,10 @@ if (ready) {
       watch?.kill();
       watch = ScrollTrigger.create({
         trigger: wrap,
-        // Running only while the stages are well in view: their top past the middle of the
-        // screen, their bottom not yet above it.
-        start: () => (phone ? 'top 66%' : 'top 62%'),
-        end: () => (phone ? 'bottom 34%' : 'bottom 38%'),
-        onToggle: (self) => {
-          if (self.isActive) { if (state === 'idle' || state === 'stopped') run(); }
-          else leave();
-        },
+        // Running while most of the stages are in view, in either scroll direction.
+        start: () => (phone ? 'top 75%' : 'top 70%'),
+        end: () => (phone ? 'bottom 25%' : 'bottom 30%'),
+        onToggle: (self) => { if (self.isActive) run(); else leave(); },
       });
     };
     return api;

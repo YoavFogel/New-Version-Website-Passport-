@@ -111,10 +111,12 @@ h1, p, figure { margin: 0; }
 }
 
 /* ---------- The journey: nine stages on one path ---------- */
-/* Desktop: a serpentine of three rows in the right-hand nine columns (1-2-3, then 6-5-4 back,
-   then 7-8-9), joined by one drawn path. The left band stays free for the passport between modes. */
+/* Desktop: a serpentine of three rows, centred on the page (1-2-3, then 4-5-6 back, then 7-8-9),
+   joined by one drawn path. The side margins stay free for the passport between modes. */
 .journey { background: var(--ground); padding-block: clamp(64px, 9vh, 120px); --c: clamp(60px, 7.6vh, 96px); }
-.journey-head { padding-bottom: clamp(24px, 4vh, 48px); }
+.journey .about-wrap > * { grid-column: 1 / -1; }
+.journey-head { padding-bottom: clamp(24px, 4vh, 48px); text-align: center; }
+.journey .tl { width: min(1040px, 100%); margin-inline: auto; }
 .journey-title { margin: 0; font-size: clamp(40px, 5.2vw, 84px); line-height: 1; letter-spacing: -0.035em; font-weight: 900; color: var(--navy-deep); }
 .journey-sub { margin-top: 0.5em; font-size: clamp(20px, 1.9vw, 28px); font-weight: 500; color: var(--navy); }
 
@@ -150,6 +152,7 @@ h1, p, figure { margin: 0; }
   /* Phone: one column, circles on the right in a gentle wave, titles beside them. */
   .journey { --c: 60px; }
   .tl { grid-column: 1 / -1; }
+  .journey-head { text-align: start; }
   .tl-stages { grid-template-columns: 1fr; row-gap: 14px; }
   .stage, .stage:nth-child(n) { grid-area: auto; flex-direction: row; align-items: center; text-align: start; gap: 18px; padding: 6px 0; }
   .stage:nth-child(even) { padding-inline-start: 34px; }
