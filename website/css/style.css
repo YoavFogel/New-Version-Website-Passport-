@@ -55,8 +55,8 @@ h1, p, figure { margin: 0; }
 
 /* ---------- Phone ---------- */
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .hero-text { grid-column: 1; grid-row: 1; align-self: start; padding: calc(20px + 52px + 3svh) 0 0; text-align: center; }
+  .hero { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .hero-text { grid-column: 1; grid-row: 1; align-self: center; padding: calc(20px + 52px) 0 2svh; text-align: center; }
   .hero h1 { font-size: clamp(34px, 10vw, 46px); }
   .hero h1 .brand { display: block; margin-top: 0.08em; }
   .hero-sub { font-size: clamp(21px, 6vw, 26px); }
