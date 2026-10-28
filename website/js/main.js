@@ -14,6 +14,7 @@ if (ready) {
   // Smooth scroll, driven by GSAP's ticker so the passport and the page move as one.
   if (window.Lenis && !reduceMotion) {
     const lenis = new Lenis({ autoRaf: false, anchors: true, lerp: 0.09 });
+    window.__lenis = lenis; // the side menu pauses it while open
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000));
     gsap.ticker.lagSmoothing(0);
@@ -66,12 +67,18 @@ if (ready) {
     undock();
     const m = journey.mix;
     const j = m > 0 ? journey.pose() : null;
+    // Between the side margin and the stages it moves down first and across last (and the
+    // other way back), so it passes below the centred title instead of through it.
+    const w = { x: m ** 3, y: 1 - (1 - m) ** 3, scale: m, rotation: m };
     for (const k of ['x', 'y', 'scale', 'rotation']) {
-      set[k](j ? scrollPose[k] + (j[k] - scrollPose[k]) * m : scrollPose[k]);
+      set[k](j ? scrollPose[k] + (j[k] - scrollPose[k]) * w[k] : scrollPose[k]);
     }
     // Opacity follows the mix more steeply, so a passport passing between a hidden rest and the
     // journey shows up only near its stage and never drifts half-faded over the text.
-    set.opacity(j ? scrollPose.opacity + (j.opacity - scrollPose.opacity) * m ** 3 : scrollPose.opacity);
+    // Leaving the path, it fades out where it stands and fades in at its scroll rest, rather
+    // than sliding across whatever the page has brought up meanwhile.
+    const dip = j && journey.leaving() ? Math.max(journey.fade * m, (1 - m) ** 4) : 1;
+    set.opacity((j ? scrollPose.opacity + (j.opacity - scrollPose.opacity) * m ** 3 : scrollPose.opacity) * dip);
   }
   gsap.ticker.add(render);
 
@@ -244,7 +251,23 @@ if (ready) {
 
     // The passport's pose on the path, in viewport coordinates: above the circle on desktop,
     // on the circle's outer shoulder on a phone. Small enough to leave the title clear.
+    // When it leaves the path it lets go of its stage: the pose is held where it was, in the
+    // viewport, while the mix carries it back to the scroll path, so it does not ride the stage
+    // up into the menu or onto the next title. On a return it is let go of gently (`thaw`).
+    let held = null;
+    const hold = { thaw: 1 };
+    let thawTween = null;
+    api.fade = 1;
+    const freeze = () => { thawTween?.kill(); held = livePose(); hold.thaw = 0; gsap.fromTo(api, { fade: 1 }, { fade: 0, duration: 0.22, ease: 'power1.in', overwrite: 'auto' }); };
+    const thaw = () => { if (!held) return; thawTween?.kill(); thawTween = gsap.to(hold, { thaw: 1, duration: 0.6, ease: 'power2.inOut', onComplete: () => { held = null; } }); };
+    api.leaving = () => state !== 'running';
     api.pose = () => {
+      const live = livePose();
+      if (!held || hold.thaw >= 1) return live;
+      const t = hold.thaw;
+      return { x: held.x + (live.x - held.x) * t, y: held.y + (live.y - held.y) * t, scale: held.scale + (live.scale - held.scale) * t, rotation: 0, opacity: 1 };
+    };
+    function livePose() {
       const box = svg.getBoundingClientRect();
       const sx = box.width / (wrap.offsetWidth || 1);
       const q = track.getPointAtLength(api.len);
@@ -253,9 +276,11 @@ if (ready) {
       const scale = targetW / floatWidth;
       const h = floatHeight * scale;
       const cx = box.left + q.x * sx + (phone ? R * 0.9 : 0);
-      const cy = box.top + q.y * sx - (phone ? R * 0.55 : R + h / 2 + 8);
+      // If the visitor scrolls on while it is on a stage, it waits at the top edge, below the
+      // menu button, instead of riding the stage off the screen.
+      const cy = Math.max(box.top + q.y * sx - (phone ? R * 0.55 : R + h / 2 + 8), 92 + h / 2);
       return { x: cx - floatWidth / 2, y: cy - floatHeight / 2, scale, rotation: 0, opacity: 1 };
-    };
+    }
 
     function setActive(i) {
       stages.forEach((st, k) => {
@@ -278,6 +303,7 @@ if (ready) {
       runTl?.kill();
       const resume = state === 'stopped' && performance.now() - leftAt < 1500;
       const from = resume ? reached : 0;
+      thaw();
       if (!resume) {
         reached = 0;
         stages.forEach((st) => st.classList.remove('is-active', 'is-visited'));
@@ -299,7 +325,7 @@ if (ready) {
         }
       }
       // After the last stage: it lifts off the path and rejoins the scroll.
-      runTl.call(() => { stages.at(-1).classList.remove('is-active'); stages.at(-1).classList.add('is-visited'); reached = nodes.length; state = 'done'; mixTo(0, 1.2); });
+      runTl.call(() => { stages.at(-1).classList.remove('is-active'); stages.at(-1).classList.add('is-visited'); reached = nodes.length; state = 'done'; freeze(); mixTo(0, 1.2); });
     }
 
     function leave() {
@@ -308,6 +334,7 @@ if (ready) {
       state = 'stopped';
       leftAt = performance.now();
       stages.forEach((st) => st.classList.remove('is-active'));
+      freeze();
       mixTo(0, phone ? 0.6 : 0.9);
     }
 
@@ -741,8 +768,178 @@ if (ready) {
   })();
 
 
+  // ---------- Our ads: a gallery that keeps moving ----------
+  // A coverflow on one value, `pos`: the card at `pos` faces the visitor, the others turn
+  // away into depth on either side, and the row wraps round. It drifts on by itself while on
+  // screen and nobody is touching it; arrows, keys, a drag or a click take over. A video
+  // loads only when its card is played, in a dialog, so the page never downloads one up front.
+  const gallery = (() => {
+    const root = document.getElementById('vg');
+    const api = { build() {} };
+    if (!root) return api;
+    const row = root.querySelector('.vg-track');
+    const items = [...row.querySelectorAll('.vg-item')];
+    const N = items.length;
+    const now = root.querySelector('.vg-now');
+    const modal = document.getElementById('vg-modal');
+    const frame = modal.querySelector('.vg-frame');
+    const st = { pos: 0, enter: 0 };
+    let px = 300;
+    let active = -1;
+    let tween = null;
+    let timer = null;
+    let inView = false;
+    let held = false;
+    const wrap = (d) => ((((d + N / 2) % N) + N) % N) - N / 2;
+    const mod = (i) => ((i % N) + N) % N;
+
+    function render() {
+      const e = st.enter;
+      items.forEach((it, i) => {
+        const d = wrap(i - st.pos);
+        const ad = Math.abs(d);
+        const x = -d * px * (0.55 + 0.45 * e);            // RTL: the next one waits on the left
+        const ry = Math.max(-1, Math.min(1, d)) * 38 * e;  // turned towards the centre
+        const z = -Math.min(ad, 3) * 170;
+        const sc = 1 - Math.min(ad, 3) * 0.08;
+        const op = Math.max(0, Math.min(1, 2.7 - ad)) * (ad < 0.5 ? 1 : e);
+        it.style.transform = `translate3d(${x.toFixed(1)}px, ${((1 - e) * 50).toFixed(1)}px, ${z.toFixed(0)}px) rotateY(${ry.toFixed(2)}deg) scale(${sc.toFixed(3)})`;
+        it.style.opacity = op.toFixed(3);
+        it.style.zIndex = String(100 - Math.round(ad * 10));
+        it.style.visibility = op < 0.02 ? 'hidden' : 'visible';
+        it.querySelector('.vg-poster').style.translate = `${(d * 3).toFixed(1)}% 0`;
+      });
+      const a = mod(Math.round(st.pos));
+      if (a !== active) {
+        active = a;
+        items.forEach((it, i) => { it.classList.toggle('is-active', i === a); it.querySelector('.vg-card').tabIndex = i === a ? 0 : -1; });
+        if (now) now.textContent = String(a + 1).padStart(2, '0');
+      }
+    }
+
+    function go(i, dur = reduceMotion ? 0.6 : 0.9) {
+      tween?.kill();
+      tween = gsap.to(st, { pos: st.pos + wrap(i - st.pos), duration: dur, ease: 'power3.inOut', onUpdate: render });
+    }
+    // It moves on by itself every few seconds, only while it is on screen and left alone.
+    function tick() {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (inView && !held && !modal.open && !document.hidden) go(active + 1, 1.4);
+        tick();
+      }, 4200);
+    }
+    const hold = (on) => { held = on; };
+    root.addEventListener('pointerenter', () => hold(true));
+    root.addEventListener('pointerleave', () => hold(false));
+    root.addEventListener('focusin', () => hold(true));
+    root.addEventListener('focusout', () => hold(false));
+
+    root.querySelector('.vg-next').addEventListener('click', () => go(active + 1));
+    root.querySelector('.vg-prev').addEventListener('click', () => go(active - 1));
+    root.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      go(active + (e.key === 'ArrowLeft' ? 1 : -1));
+      items[mod(active + (e.key === 'ArrowLeft' ? 1 : -1))].querySelector('.vg-card').focus({ preventScroll: true });
+    });
+
+    let drag = null;
+    let dragged = false;
+    row.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      tween?.kill();
+      drag = { x: e.clientX, y: e.clientY, pos: st.pos, lastX: e.clientX, t: performance.now(), v: 0, id: e.pointerId, on: false };
+      dragged = false;
+    });
+    row.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.on) {
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+        drag.on = true; hold(true);
+        row.classList.add('is-dragging');
+        row.setPointerCapture(e.pointerId);
+      }
+      const t = performance.now();
+      drag.v = (e.clientX - drag.lastX) / Math.max(t - drag.t, 1);
+      drag.t = t; drag.lastX = e.clientX;
+      st.pos = drag.pos - dx / px;
+      render();
+    });
+    const release = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (drag.on) {
+        dragged = true;
+        row.classList.remove('is-dragging');
+        go(Math.round(st.pos - Math.max(-1, Math.min(1, drag.v * 0.4))));
+        if (e.pointerType !== 'mouse') hold(false);
+      }
+      drag = null;
+    };
+    row.addEventListener('pointerup', release);
+    row.addEventListener('pointercancel', release);
+
+    // The player. Drive files play in Drive's own player; a file in assets/video plays natively.
+    function play(it) {
+      frame.textContent = '';
+      if (it.dataset.src) {
+        const v = document.createElement('video');
+        v.src = it.dataset.src;
+        if (it.dataset.poster) v.poster = it.dataset.poster;
+        v.controls = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+        frame.append(v);
+      } else if (it.dataset.drive) {
+        const f = document.createElement('iframe');
+        f.src = `https://drive.google.com/file/d/${it.dataset.drive}/preview`;
+        f.title = it.dataset.title || 'סרטון';
+        f.allow = 'autoplay; fullscreen; picture-in-picture';
+        f.allowFullscreen = true;
+        frame.append(f);
+      }
+      modal.showModal();
+      window.__lenis?.stop();
+      gsap.fromTo(modal, { opacity: 0, scale: 0.94, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' });
+    }
+    const close = () => modal.close();
+    modal.querySelector('.vg-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.addEventListener('close', () => { frame.textContent = ''; window.__lenis?.start(); });
+
+    items.forEach((it, i) => {
+      it.querySelector('.vg-card').addEventListener('click', () => {
+        if (dragged) { dragged = false; return; }
+        if (i === active) play(it);
+        else go(i);
+      });
+    });
+
+    // Posters load once the gallery is close to the screen.
+    const loadPosters = () => items.forEach((it) => {
+      const src = it.dataset.poster || (it.dataset.drive && `https://drive.google.com/thumbnail?id=${it.dataset.drive}&sz=w800`);
+      if (src) it.querySelector('.vg-poster').style.setProperty('--poster', `url("${src}")`);
+    });
+
+    let watch = null;
+    api.build = () => {
+      px = items[0].offsetWidth * (window.innerWidth <= 900 ? 0.78 : 0.72);
+      watch?.kill();
+      watch = ScrollTrigger.create({
+        trigger: root, start: 'top bottom+=400', end: 'bottom top',
+        onToggle: (self) => { inView = self.isActive; },
+        onEnter: loadPosters, onEnterBack: loadPosters,
+      });
+      // The row opens out of one stack as it arrives.
+      track(gsap.fromTo(st, { enter: 0 }, { enter: 1, ease: 'none', onUpdate: render, scrollTrigger: { trigger: root, start: 'top 90%', end: 'top 40%', scrub: 0.6 } }));
+      render();
+      tick();
+    };
+    return api;
+  })();
+
+
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { story(); services(); faq.build(); build(); ScrollTrigger.refresh(); };
+  const start = () => { story(); services(); faq.build(); gallery.build(); build(); ScrollTrigger.refresh(); };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });
