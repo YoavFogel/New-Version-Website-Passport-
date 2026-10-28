@@ -441,7 +441,7 @@ if (ready) {
       }));
     });
 
-    // The year counts up to 2017 as it rises, slower than the page.
+    // The year counts up to 2019 as it rises, slower than the page.
     document.querySelectorAll('[data-count]').forEach((el) => {
       const from = Number(el.dataset.count);
       const to = Number(el.dataset.final || (el.dataset.final = el.textContent.trim()));

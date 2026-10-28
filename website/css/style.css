@@ -306,7 +306,6 @@ h1, p, figure { margin: 0; }
   .sv-map { position: relative; top: 0; height: auto; width: 100%; max-width: 440px; }
   .sv-relay { height: 110px; margin-inline: 8px; }
   .read-2 { grid-template-columns: 1fr; }
-  /* The passport comes back into this gap, above the last line. */
-  .sv-close { padding-block: 320px 140px; }
+  .sv-close { padding-block: 72px 120px; }
 }
 .sv-h .line > span, .sv-final .fl-in { text-wrap: balance; }
