@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Security policy: scripts only from this site; frames only Drive and Google Maps. The
+  <!-- Security policy: scripts only from this site; frames only Drive, Google Maps and the Enable widget. The
        lead endpoint is reached over https (connect-src). Repeat as an HTTP header on the host,
        together with frame-ancestors, which a meta tag cannot set. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://drive.google.com https://*.googleusercontent.com https://*.gstatic.com https://maps.google.com https://*.google.com; font-src 'self'; media-src 'self'; frame-src https://drive.google.com https://maps.google.com https://www.google.com; connect-src 'self' https:; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://enable.co.il https://*.enable.co.il; style-src 'self' 'unsafe-inline' https://enable.co.il https://*.enable.co.il; img-src 'self' data: https://*.enable.co.il https://drive.google.com https://*.googleusercontent.com https://*.gstatic.com https://maps.google.com https://*.google.com; font-src 'self' https://*.enable.co.il; media-src 'self'; frame-src https://*.enable.co.il https://drive.google.com https://maps.google.com https://www.google.com; connect-src 'self' https:; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>ברוכים הבאים לאי.יו פספורט | הבית שלכם לאזרחות ודרכון רומני</title>
   <meta name="description" content="EU Passport, הבית לאזרחות ודרכון רומני. משרד עו&quot;ד אביחי פוגל-רונן.">
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">דילוג לתוכן</a>
+  <a class="skip-link" href="#main">דלג לתוכן הראשי</a>
   <!-- Side menu: closed until the button is pressed (js/site.js). -->
   <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="side-menu"><span class="menu-lines" aria-hidden="true"><i></i><i></i><i></i></span><span class="menu-label">תפריט</span></button>
   <div class="menu-veil" id="menu-veil" hidden></div>
@@ -64,7 +64,7 @@
     </figure>
   </header>
 
-  <main id="main">
+  <main id="main" tabindex="-1">
     <!-- Empty pages, built one by one. data-passport says where the passport rests while
          the section is on screen: side (start | end | center), height in vh, scale. -->
     <!-- About: the story told in three chapters as the visitor scrolls.
@@ -148,6 +148,7 @@
           <h2 class="adv-title" id="adv-title" data-mask><span class="w">מה</span> <span class="w">נותן</span> <span class="w">לכם</span> <span class="w">דרכון</span> <span class="w">רומני?</span></h2>
         </header>
         <span class="adv-slot" aria-hidden="true" data-passport="center 34 1.5" data-passport-phone="center 43 1.2"><span class="adv-slot-end" data-passport="center 34 1.5" data-passport-phone="center 43-260 1.2"></span></span>
+        <img class="adv-still" src="assets/img/passport.webp" width="274" height="329" alt="" aria-hidden="true">
         <ol class="adv-stamps">
           <li class="stamp is-rect" style="--x: 21; --y: -23; --r: -7deg">
             <div class="st-ink">
@@ -233,6 +234,7 @@
         <header class="journey-head">
           <h2 class="journey-title" id="journey-title" data-mask><span class="w">הדרך</span> <span class="w">שלכם</span> <span class="w">לדרכון</span> <span class="w">רומני</span></h2>
           <p class="journey-sub" data-reveal>9 שלבים, ואנחנו איתכם לאורך כל הדרך.</p>
+          <button class="anim-toggle" id="tl-pause" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M8 5v14M16 5v14"/><path class="i-play" d="M7 5l12 7-12 7z"/></svg><span class="tl-pause-label">עצירת ההדגמה</span></button>
         </header>
         <div class="tl" id="tl">
           <svg class="tl-path" aria-hidden="true"><path class="tl-track"/><path class="tl-done"/></svg>
@@ -424,68 +426,68 @@
       <div class="faq-stage" id="faq-stage" data-passport="hide 30 0.8" data-passport-phone="hide 30 1">
         <ol class="qa-wheel" id="qa-wheel">
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q1" aria-describedby="qa-a1">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">01</span><span class="qa-q" id="qa-q1">מי יכול לקבל אזרחות רומנית?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">01</span><span class="qa-a" id="qa-a1">מי שאחד מהוריו, סביו או סבי סביו היה אזרח רומני עשוי להיות זכאי להשבת אזרחות. את הזכאות אנחנו בודקים כבר בשיחת הייעוץ הראשונה, לפי הסיפור המשפחתי והמסמכים.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b1"><span class="qa-num">01</span><span class="qa-q" id="qa-q1">מי יכול לקבל אזרחות רומנית?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b1"><span class="qa-num" aria-hidden="true">01</span><span class="qa-a" id="qa-a1">מי שאחד מהוריו, סביו או סבי סביו היה אזרח רומני עשוי להיות זכאי להשבת אזרחות. את הזכאות אנחנו בודקים כבר בשיחת הייעוץ הראשונה, לפי הסיפור המשפחתי והמסמכים.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q2" aria-describedby="qa-a2">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">02</span><span class="qa-q" id="qa-q2">האם צריך לוותר על האזרחות הישראלית?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">02</span><span class="qa-a" id="qa-a2">לא. רומניה מאפשרת אזרחות כפולה, והאזרחות הישראלית שלכם נשארת בדיוק כפי שהיא.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b2"><span class="qa-num">02</span><span class="qa-q" id="qa-q2">האם צריך לוותר על האזרחות הישראלית?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b2"><span class="qa-num" aria-hidden="true">02</span><span class="qa-a" id="qa-a2">לא. רומניה מאפשרת אזרחות כפולה, והאזרחות הישראלית שלכם נשארת בדיוק כפי שהיא.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q3" aria-describedby="qa-a3">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">03</span><span class="qa-q" id="qa-q3">מה אם אין לנו מסמכים מהמשפחה?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">03</span><span class="qa-a" id="qa-a3">זה מצב נפוץ מאוד. הצוותים המקומיים שלנו ברומניה, במולדובה ובאוקראינה מאתרים תעודות לידה, נישואין ורישומים משפחתיים בארכיונים וברשויות המקומיות.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b3"><span class="qa-num">03</span><span class="qa-q" id="qa-q3">מה אם אין לנו מסמכים מהמשפחה?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b3"><span class="qa-num" aria-hidden="true">03</span><span class="qa-a" id="qa-a3">זה מצב נפוץ מאוד. הצוותים המקומיים שלנו ברומניה, במולדובה ובאוקראינה מאתרים תעודות לידה, נישואין ורישומים משפחתיים בארכיונים וברשויות המקומיות.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q4" aria-describedby="qa-a4">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">04</span><span class="qa-q" id="qa-q4">כמה זמן לוקח התהליך?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">04</span><span class="qa-a" id="qa-a4">משך התהליך משתנה מתיק לתיק, ותלוי באיתור המסמכים ובזמני הטיפול של הרשויות ברומניה. בשיחת הייעוץ נציג לכם הערכה לפי נסיבות התיק שלכם.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b4"><span class="qa-num">04</span><span class="qa-q" id="qa-q4">כמה זמן לוקח התהליך?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b4"><span class="qa-num" aria-hidden="true">04</span><span class="qa-a" id="qa-a4">משך התהליך משתנה מתיק לתיק, ותלוי באיתור המסמכים ובזמני הטיפול של הרשויות ברומניה. בשיחת הייעוץ נציג לכם הערכה לפי נסיבות התיק שלכם.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q5" aria-describedby="qa-a5">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">05</span><span class="qa-q" id="qa-q5">האם צריך לדעת רומנית?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">05</span><span class="qa-a" id="qa-a5">בהתאם לנסיבות התיק ולדרישות העדכניות של החוק, ייתכן שתידרש הוכחת ידיעה של השפה הרומנית. נסביר לכם מראש מה נדרש בתיק שלכם.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b5"><span class="qa-num">05</span><span class="qa-q" id="qa-q5">האם צריך לדעת רומנית?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b5"><span class="qa-num" aria-hidden="true">05</span><span class="qa-a" id="qa-a5">בהתאם לנסיבות התיק ולדרישות העדכניות של החוק, ייתכן שתידרש הוכחת ידיעה של השפה הרומנית. נסביר לכם מראש מה נדרש בתיק שלכם.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q6" aria-describedby="qa-a6">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">06</span><span class="qa-q" id="qa-q6">האם צריך לטוס לרומניה?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">06</span><span class="qa-a" id="qa-a6">את רוב העבודה אנחנו עושים בשבילכם, ואת המסמכים מעבירים לרומניה נציגים ומנהלי תיקים מטעם המשרד. אם בשלב כלשהו תידרש הגעה אישית, תדעו על כך מראש.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b6"><span class="qa-num">06</span><span class="qa-q" id="qa-q6">האם צריך לטוס לרומניה?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b6"><span class="qa-num" aria-hidden="true">06</span><span class="qa-a" id="qa-a6">את רוב העבודה אנחנו עושים בשבילכם, ואת המסמכים מעבירים לרומניה נציגים ומנהלי תיקים מטעם המשרד. אם בשלב כלשהו תידרש הגעה אישית, תדעו על כך מראש.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q7" aria-describedby="qa-a7">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">07</span><span class="qa-q" id="qa-q7">האם גם הילדים שלי יכולים לקבל אזרחות?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">07</span><span class="qa-a" id="qa-a7">ילדים קטינים יכולים בדרך כלל להיכלל בבקשה של ההורה. נבדוק את זה איתכם כבר בפתיחת התיק.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b7"><span class="qa-num">07</span><span class="qa-q" id="qa-q7">האם גם הילדים שלי יכולים לקבל אזרחות?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b7"><span class="qa-num" aria-hidden="true">07</span><span class="qa-a" id="qa-a7">ילדים קטינים יכולים בדרך כלל להיכלל בבקשה של ההורה. נבדוק את זה איתכם כבר בפתיחת התיק.</span></div>
+                </div>
+              </div>
             </li>
             <li class="qa">
-              <button class="qa-card" type="button" aria-expanded="false" aria-labelledby="qa-q8" aria-describedby="qa-a8">
-                <span class="qa-inner">
-                  <span class="qa-face qa-front"><span class="qa-num" aria-hidden="true">08</span><span class="qa-q" id="qa-q8">מה מקבלים בסוף התהליך?</span><span class="qa-hint" aria-hidden="true">לתשובה</span></span>
-                  <span class="qa-face qa-back"><span class="qa-num" aria-hidden="true">08</span><span class="qa-a" id="qa-a8">תעודת אזרחות רומנית ודרכון רומני, שהוא גם דרכון של האיחוד האירופי. אנחנו מלווים אתכם עד שהדרכון בידיים שלכם.</span></span>
-                </span>
-              </button>
+              <div class="qa-card">
+                <div class="qa-inner">
+                  <button class="qa-face qa-front" type="button" aria-expanded="false" aria-controls="qa-b8"><span class="qa-num">08</span><span class="qa-q" id="qa-q8">מה מקבלים בסוף התהליך?</span><span class="qa-hint">לתשובה</span></button>
+                  <div class="qa-face qa-back" id="qa-b8"><span class="qa-num" aria-hidden="true">08</span><span class="qa-a" id="qa-a8">תעודת אזרחות רומנית ודרכון רומני, שהוא גם דרכון של האיחוד האירופי. אנחנו מלווים אתכם עד שהדרכון בידיים שלכם.</span></div>
+                </div>
+              </div>
             </li>
         </ol>
         <div class="qa-nav">
@@ -546,10 +548,11 @@
           <p class="qa-count vg-count" aria-live="polite"><b class="vg-now">01</b> / <span>05</span></p>
           <button class="qa-arrow vg-next" type="button" aria-label="הפרסומת הבאה"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         </div>
+        <button class="anim-toggle anim-toggle-dark vg-pause" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M8 5v14M16 5v14"/><path class="i-play" d="M7 5l12 7-12 7z"/></svg><span class="vg-pause-label">עצירת המעבר האוטומטי</span></button>
       </div>
       <dialog class="vg-modal" id="vg-modal" aria-label="נגן וידאו">
-        <div class="vg-frame"></div>
         <button class="vg-close" type="button" aria-label="סגירת הנגן"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <div class="vg-frame"></div>
       </dialog>
     </section>
     <!-- Leave your details: four questions on three cards (js/site.js). -->
@@ -560,7 +563,7 @@
           <p class="lead-sub" data-reveal>ספרו לנו קצת על המשפחה, ונחזור אליכם לשיחת ייעוץ.</p>
         </header>
         <form class="lead-form" data-lead novalidate aria-label="השארת פרטים">
-          <div class="lf-progress" aria-hidden="true"><span class="lf-bar"><i></i></span><span class="lf-count">שלב <b class="lf-now">1</b> מתוך 3</span></div>
+          <div class="lf-progress"><span class="lf-bar" aria-hidden="true"><i></i></span><span class="lf-count" aria-live="polite">שלב <b class="lf-now">1</b> מתוך 3</span></div>
           <div class="lf-cards">
             <fieldset class="lf-step">
               <legend class="lf-q">איך קוראים לכם?</legend>
@@ -643,6 +646,7 @@
       </div>
       <div class="ft-bottom">
         <p>© <span class="ft-year">2026</span> אי.יו פספורט. כל הזכויות שמורות.</p>
+        <a class="ft-a11y" href="accessibility/">הצהרת נגישות</a>
         <a class="ft-top" href="#top">חזרה למעלה<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
       </div>
     </div>

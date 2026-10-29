@@ -3,9 +3,11 @@
 // so scrolling back up plays the same path in reverse (except in the journey section, where it
 // runs on its own clock; see below). At the very top the passport docks
 // back into the photo itself, so it sits exactly where it is in the original picture.
-// The move only happens while the visitor scrolls, so it stays on under reduced motion too,
-// in a calmer form: native scrolling, no rotation.
+// When the visitor asks the system to reduce motion, the site is shown at rest instead
+// ("still" below): the passport stays in the photo, every text and picture is in its final
+// place, nothing moves on its own, and the browser's own scrolling is used.
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const still = reduceMotion;
 const ready = !!(window.gsap && window.ScrollTrigger);
 
 if (ready) {
@@ -15,6 +17,20 @@ if (ready) {
   if (window.Lenis && !reduceMotion) {
     const lenis = new Lenis({ autoRaf: false, anchors: true, lerp: 0.09 });
     window.__lenis = lenis; // the side menu pauses it while open
+    // Keyboard focus that lands off screen brings its element into view at once; without this
+    // the smooth scroll would hold the page where it was.
+    document.addEventListener('focusin', (e) => {
+      if (e.target.closest?.('#side-menu, dialog')) return;
+      requestAnimationFrame(() => {
+        const r = e.target.getBoundingClientRect?.();
+        if (!r) return;
+        const inView = r.top >= 80 && r.bottom <= innerHeight - 20;
+        // Measured against the page's real scroll position (the browser may already have moved
+        // it); either way the smooth scroll is told where the page now is, so it does not pull back.
+        const to = inView ? window.scrollY : Math.round(window.scrollY + r.top - innerHeight * 0.3);
+        lenis.scrollTo(to, { immediate: true, force: true });
+      });
+    });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000));
     gsap.ticker.lagSmoothing(0);
@@ -61,6 +77,7 @@ if (ready) {
     opacity: gsap.quickSetter(passport, 'opacity'),
   };
   function render() {
+    if (still) return; // the passport stays in the photo
     // At the very top, after the scrub has caught up, the passport docks back into the photo.
     const atTop = scrollTl && scrollTl.time() <= 0.5 && journey.mix === 0;
     if (atTop) { dock(); return; }
@@ -247,7 +264,7 @@ if (ready) {
         return best;
       });
       api.radius = pts[0].r;
-      if (state === 'done') api.len = total;
+      if (state === 'done' || still) api.len = total; // at rest the whole path is drawn
       api.len = Math.min(api.len || nodes[0], total);
       paint();
     };
@@ -331,6 +348,20 @@ if (ready) {
       }
       // After the last stage: it lifts off the path and rejoins the scroll.
       runTl.call(() => { stages.at(-1).classList.remove('is-active'); stages.at(-1).classList.add('is-visited'); reached = nodes.length; state = 'done'; freeze(); mixTo(0, 1.2); });
+      if (paused) runTl.pause();
+    }
+
+    // The tour runs by itself for about 20 seconds, so it can be paused and resumed.
+    let paused = false;
+    const pauseBtn = document.getElementById('tl-pause');
+    if (pauseBtn) {
+      pauseBtn.hidden = still;
+      pauseBtn.addEventListener('click', () => {
+        paused = !paused;
+        pauseBtn.setAttribute('aria-pressed', String(paused));
+        pauseBtn.querySelector('.tl-pause-label').textContent = paused ? 'המשך ההדגמה' : 'עצירת ההדגמה';
+        if (paused) runTl?.pause(); else runTl?.resume();
+      });
     }
 
     function leave() {
@@ -356,7 +387,7 @@ if (ready) {
     };
     return api;
   })();
-  journey.watch();
+  if (!still) journey.watch();
 
   // ---------- About: the story is revealed by the scroll itself ----------
   // Every move is scrubbed to the scroll position: the text arrives as the reader scrolls
@@ -397,6 +428,7 @@ if (ready) {
 
   function story() {
     storyTriggers.splice(0).forEach((t) => t.kill(true));
+    if (still) return; // the text is simply there
     const mobile = window.innerWidth <= 900;
     const calm = reduceMotion;
     const zone = (start, end) => ({ start, end: mobile ? end.replace(/(\d+)%/, (m, n) => `${Math.min(+n + 10, 95)}%`) : end, scrub: 0.8 });
@@ -473,9 +505,10 @@ if (ready) {
         });
       }
       // Words stay inline (no transform), so the spaces between them always render.
+      // Fully lit by the time the line reaches the reading zone, so it is never faint while read.
       track(gsap.fromTo(p.querySelectorAll('.word'), { opacity: 0.14 }, {
         opacity: 1, ease: 'none', stagger: 0.12,
-        scrollTrigger: { trigger: p, ...zone('top 85%', 'bottom 45%') },
+        scrollTrigger: { trigger: p, ...zone('top 92%', 'bottom 72%') },
       }));
     });
 
@@ -511,6 +544,13 @@ if (ready) {
   // Same rule as the story: everything is scrubbed to the scroll, nothing waits on a timer and
   // nothing pins the page. The map is the one elaborate move; the rest is type and small lines.
   function services() {
+    if (still) {
+      // At rest: the route and the four teams are on the map, the file has arrived in Romania.
+      document.getElementById('map-plane')?.setAttribute('display', 'none');
+      const relay = document.getElementById('sv-relay');
+      if (relay) gsap.set(relay.querySelector('.relay-file'), { x: -(relay.offsetWidth - 16) });
+      return;
+    }
     const mobile = window.innerWidth <= 900;
     const calm = reduceMotion;
     const scrub = 0.8;
@@ -667,7 +707,7 @@ if (ready) {
         it.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${(a * 180 / Math.PI).toFixed(2)}deg) scale(${scale.toFixed(3)})`;
         it.style.opacity = op.toFixed(3);
         it.style.zIndex = String(100 - Math.round(ad * 10));
-        it.style.visibility = op < 0.02 ? 'hidden' : 'visible';
+        it.style.pointerEvents = op < 0.02 ? 'none' : '';
       });
     }
 
@@ -676,7 +716,7 @@ if (ready) {
       items.forEach((it, k) => {
         const on = k === i;
         it.classList.toggle('is-active', on);
-        const btn = it.querySelector('.qa-card');
+        const btn = it.querySelector('.qa-front');
         btn.tabIndex = on ? 0 : -1;
         if (!on && it.classList.contains('is-flipped')) flip(it, false);
       });
@@ -686,11 +726,11 @@ if (ready) {
 
     function flip(it, on) {
       it.classList.toggle('is-flipped', on);
-      it.querySelector('.qa-card').setAttribute('aria-expanded', String(on));
+      it.querySelector('.qa-front').setAttribute('aria-expanded', String(on));
     }
 
     // Turn the wheel to card i by the short way round.
-    function go(i, dur = reduceMotion ? 0.5 : 0.75) {
+    function go(i, dur = still ? 0.2 : 0.75) {
       const target = st.rot + wrap(i - st.rot);
       spin?.kill();
       spin = gsap.to(st, { rot: target, duration: dur, ease: 'power3.out', onUpdate: render, onComplete: () => { st.rot = ((Math.round(st.rot) % N) + N) % N; render(); } });
@@ -703,7 +743,7 @@ if (ready) {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
       go(active + (e.key === 'ArrowLeft' ? 1 : -1));
-      items[active].querySelector('.qa-card').focus({ preventScroll: true });
+      items[active].querySelector('.qa-front').focus({ preventScroll: true });
     });
 
     // A drag turns the wheel with the finger; a flick carries on to the next card.
@@ -744,7 +784,9 @@ if (ready) {
     wheel.addEventListener('pointercancel', release);
 
     items.forEach((it, i) => {
-      const btn = it.querySelector('.qa-card');
+      const btn = it.querySelector('.qa-front');
+      // A click on the answer turns the card back to its question.
+      it.querySelector('.qa-back').addEventListener('click', () => { if (i === active && !dragged) flip(it, false); });
       btn.addEventListener('click', () => {
         if (dragged) { dragged = false; return; }
         if (i === active) flip(it, !it.classList.contains('is-flipped'));
@@ -762,6 +804,7 @@ if (ready) {
       const px = cw * (phone ? 1.06 : 1.1);
       geo = { step, px, R: px / Math.sin(step * Math.PI / 180) };
       setActive(active);
+      if (still) { st.fan = 1; render(); return; }
       // The fan opens as the cards arrive on screen, from one stack into the arc.
       track(gsap.fromTo(st, { fan: 0 }, {
         fan: 1, ease: 'none', onUpdate: render,
@@ -811,7 +854,7 @@ if (ready) {
         it.style.transform = `translate3d(${x.toFixed(1)}px, ${((1 - e) * 50).toFixed(1)}px, ${z.toFixed(0)}px) rotateY(${ry.toFixed(2)}deg) scale(${sc.toFixed(3)})`;
         it.style.opacity = op.toFixed(3);
         it.style.zIndex = String(100 - Math.round(ad * 10));
-        it.style.visibility = op < 0.02 ? 'hidden' : 'visible';
+        it.style.pointerEvents = op < 0.02 ? 'none' : '';
         it.querySelector('.vg-poster').style.translate = `${(d * 3).toFixed(1)}% 0`;
       });
       const a = mod(Math.round(st.pos));
@@ -822,7 +865,7 @@ if (ready) {
       }
     }
 
-    function go(i, dur = reduceMotion ? 0.6 : 0.9) {
+    function go(i, dur = still ? 0.2 : 0.9) {
       tween?.kill();
       tween = gsap.to(st, { pos: st.pos + wrap(i - st.pos), duration: dur, ease: 'power3.inOut', onUpdate: render });
     }
@@ -830,11 +873,21 @@ if (ready) {
     function tick() {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        if (inView && !held && !modal.open && !document.hidden) go(active + 1, 1.4);
+        if (inView && !held && !paused && !modal.open && !document.hidden) go(active + 1, 1.4);
         tick();
       }, 4200);
     }
     const hold = (on) => { held = on; };
+    // The visitor can stop the automatic turning (and it never starts under reduced motion).
+    let paused = still;
+    const pauseBtn = root.querySelector('.vg-pause');
+    const syncPause = () => {
+      if (!pauseBtn) return;
+      pauseBtn.setAttribute('aria-pressed', String(paused));
+      pauseBtn.querySelector('.vg-pause-label').textContent = paused ? 'הפעלת המעבר האוטומטי' : 'עצירת המעבר האוטומטי';
+    };
+    pauseBtn?.addEventListener('click', () => { paused = !paused; syncPause(); });
+    syncPause();
     root.addEventListener('pointerenter', () => hold(true));
     root.addEventListener('pointerleave', () => hold(false));
     root.addEventListener('focusin', () => hold(true));
@@ -886,6 +939,7 @@ if (ready) {
     row.addEventListener('pointercancel', release);
 
     // The player. Drive files play in Drive's own player; a file in assets/video plays natively.
+    let opener = null;
     // Only a Drive file ID or a video in this site's own assets/video folder is accepted.
     const DRIVE_ID = /^[A-Za-z0-9_-]{10,}$/;
     const LOCAL = /^assets\/video\/[\w.-]+\.(mp4|webm)$/;
@@ -907,14 +961,17 @@ if (ready) {
         f.allowFullscreen = true;
         frame.append(f);
       }
+      opener = document.activeElement;
       modal.showModal();
+      // Focus starts on the close button, so Esc and Tab work before the player takes the keys.
+      modal.querySelector('.vg-close').focus();
       window.__lenis?.stop();
       gsap.fromTo(modal, { opacity: 0, scale: 0.94, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'power3.out' });
     }
     const close = () => modal.close();
     modal.querySelector('.vg-close').addEventListener('click', close);
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-    modal.addEventListener('close', () => { frame.textContent = ''; window.__lenis?.start(); });
+    modal.addEventListener('close', () => { frame.textContent = ''; window.__lenis?.start(); opener?.focus?.({ preventScroll: true }); });
 
     items.forEach((it, i) => {
       it.querySelector('.vg-card').addEventListener('click', () => {
@@ -940,6 +997,7 @@ if (ready) {
         onToggle: (self) => { inView = self.isActive; },
         onEnter: loadPosters, onEnterBack: loadPosters,
       });
+      if (still) { st.enter = 1; render(); return; }
       // The row opens out of one stack as it arrives.
       track(gsap.fromTo(st, { enter: 0 }, { enter: 1, ease: 'none', onUpdate: render, scrollTrigger: { trigger: root, start: 'top 90%', end: 'top 40%', scrub: 0.6 } }));
       render();
@@ -955,7 +1013,7 @@ if (ready) {
   // the eight hits share the sticky stage's scroll; on a phone each stamp lands as it arrives.
   function advantages() {
     const sec = document.getElementById('advantages');
-    if (!sec) return;
+    if (!sec || still) return; // at rest: every stamp already in place
     const mobile = window.innerWidth <= 900;
     const calm = reduceMotion;
     const stamps = [...sec.querySelectorAll('.stamp')];
@@ -989,7 +1047,11 @@ if (ready) {
 
 
   // Keyframes depend on the layout, so they are measured again after load and on resize.
-  const start = () => { story(); services(); advantages(); faq.build(); gallery.build(); build(); ScrollTrigger.refresh(); };
+  const start = () => {
+    story(); services(); advantages(); faq.build(); gallery.build();
+    if (still) journey.layout(window.innerWidth <= 900); else build();
+    ScrollTrigger.refresh();
+  };
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
   document.fonts?.ready.then(() => { if (document.readyState === 'complete') start(); });

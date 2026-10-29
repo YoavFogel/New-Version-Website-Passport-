@@ -10,4 +10,10 @@ window.EUP_CONFIG = {
   // e.g. a Make.com webhook that adds the lead to monday, or a Formspree form URL.
   // While this is empty the form cannot deliver leads, and says so to the visitor.
   leadEndpoint: '',
+
+  // Enable accessibility widget: the installation script address from the site's Enable
+  // account (enable.co.il), licensed for this domain. Paste the script address exactly as
+  // Enable's installation instructions give it (it must be an https address on enable.co.il).
+  // Empty = the widget is not loaded.
+  enableScript: '',
 };

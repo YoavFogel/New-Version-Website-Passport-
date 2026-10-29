@@ -6,6 +6,16 @@
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lenis = () => window.__lenis || null;
 
+  // ---------- Enable accessibility widget ----------
+  // Loaded from the installation address in js/config.js (the site's own Enable licence).
+  // Until that address is set, nothing is loaded; the accessibility statement does not depend on it.
+  if (cfg.enableScript && /^https:\/\/([a-z0-9-]+\.)*enable\.co\.il\//.test(cfg.enableScript)) {
+    const s = document.createElement('script');
+    s.src = cfg.enableScript;
+    s.async = true;
+    document.head.append(s);
+  }
+
   // ---------- WhatsApp links, from one setting ----------
   const wa = (text) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(text || cfg.whatsappText || '')}`;
   document.querySelectorAll('[data-whatsapp]').forEach((a) => {
@@ -118,6 +128,16 @@
     const steps = [...form.querySelectorAll('.lf-step')];
     const bar = form.querySelector('.lf-bar i');
     const counter = form.querySelector('.lf-now');
+    // Each field is tied to its error line, so a screen reader reads the error with the field.
+    form.querySelectorAll('[data-rule]').forEach((field, i) => {
+      const err = field.querySelector('.lf-err');
+      err.id ||= `${form.closest('[id]')?.id || 'lf'}-err-${i}`;
+      field.querySelectorAll('input:not([type=hidden])').forEach((inp) => {
+        if (inp.name === 'relationOther') return;
+        inp.setAttribute('aria-describedby', err.id);
+        if (inp.type !== 'radio') inp.setAttribute('aria-required', 'true');
+      });
+    });
     const status = form.querySelector('.lf-status');
     const KEY = 'eup-lead';
     let at = 0;

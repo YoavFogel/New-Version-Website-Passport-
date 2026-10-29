@@ -23,7 +23,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html:not(.lenis) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: no-preference) { html:not(.lenis) { scroll-behavior: smooth; } }
 body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font); font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
 img { display: block; max-width: 100%; }
 h1, p, figure { margin: 0; }
@@ -253,7 +253,7 @@ h1, p, figure { margin: 0; }
 .origin { fill: #fff; }
 .city .dot { fill: var(--yellow); stroke: var(--navy-deep); stroke-width: 2.5; }
 .city .ring { fill: none; stroke: var(--yellow); stroke-width: 1.5; opacity: 0; }
-.city.is-on .ring { animation: city-pulse 2.6s cubic-bezier(.2, .7, .3, 1) infinite; }
+.city.is-on .ring { animation: city-pulse 2.6s cubic-bezier(.2, .7, .3, 1) 4; } /* stops after ~10s */
 .city[data-city="ias"].is-on .ring { animation-delay: .5s; }
 .city[data-city="chi"].is-on .ring { animation-delay: 1s; }
 .city[data-city="cze"].is-on .ring { animation-delay: 1.5s; }
@@ -321,8 +321,12 @@ h1, p, figure { margin: 0; }
 
 .faq-stage { --cw: 300px; --ch: 400px; position: relative; }
 .qa-wheel { margin: 0 auto; padding: 0 var(--margin); list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1240px; }
-.qa-card { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer; perspective: 1400px; -webkit-tap-highlight-color: transparent; }
-.qa-card:focus-visible { outline: 3px solid var(--yellow); outline-offset: 6px; border-radius: 22px; }
+.qa-card { box-sizing: border-box; display: block; width: 100%; perspective: 1400px; -webkit-tap-highlight-color: transparent; border-radius: 22px; }
+/* The focus ring sits on the card itself, so it stays visible after the card turns over. */
+.qa-card:has(.qa-front:focus-visible) { outline: 3px solid var(--navy); outline-offset: 6px; }
+.qa-front:focus-visible { outline: none; }
+button.qa-face { margin: 0; border: 0; font: inherit; text-align: start; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.qa-back { cursor: pointer; }
 .qa-inner { position: relative; display: grid; transform-style: preserve-3d; transition: transform 850ms cubic-bezier(.2, .8, .2, 1); }
 .qa-face { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 18px; padding: 30px 28px; border-radius: 22px; -webkit-backface-visibility: hidden; backface-visibility: hidden; text-align: start; }
 /* The card's back: the question. */
@@ -345,7 +349,7 @@ h1, p, figure { margin: 0; }
 .faq.is-wheel .qa-inner { grid-template-rows: 100%; }
 .faq.is-wheel .qa-back { transform: rotateY(180deg); overflow: auto; }
 .faq.is-wheel .qa.is-flipped .qa-inner { transform: rotateY(180deg); }
-.faq.is-wheel .qa:not(.is-active) .qa-card { cursor: inherit; }
+.faq.is-wheel .qa:not(.is-active) .qa-front { cursor: inherit; }
 .faq.is-wheel .qa:not(.is-active) .qa-hint { opacity: 0; }
 .qa-hint { transition: opacity 400ms; }
 .faq:not(.is-wheel) .qa-face { position: relative; }
@@ -467,6 +471,7 @@ html.menu-open { overflow: hidden; }
 .lf-field input:not([type=radio]) { width: 100%; height: 58px; padding: 0 18px; border-radius: 14px; border: 1.5px solid #d5dbec; background: var(--paper); font: 500 18px var(--font); color: var(--ink); transition: border-color 200ms, box-shadow 200ms; -webkit-appearance: none; appearance: none; }
 .lf-field input[dir="ltr"] { text-align: right; }
 .lf-field input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 4px rgba(39, 52, 98, .12); }
+.lf-field input:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
 .lf-field.is-bad input:not([type=radio]) { border-color: #c0392b; }
 .lf-err { min-height: 1.2em; margin: 0; font-size: 14px; color: #b0322a; }
 .lf-chips { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -538,8 +543,9 @@ html.menu-open { overflow: hidden; }
 .ct-wa .ct-ico { background: #25d366; color: #fff; }
 .ct-map { position: relative; margin: 0; min-height: 420px; border-radius: 26px; overflow: hidden; background: #dfe4f1; box-shadow: 0 0 0 1px #e3e8f4, 0 30px 60px rgba(27, 36, 72, .10); }
 .ct-map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; filter: saturate(.75) contrast(1.02); }
+.ct-map:focus-within { outline: 3px solid var(--navy); outline-offset: 4px; }
 .ct-pin { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
-.ct-pin b { position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--navy); animation: ct-pulse 2.4s cubic-bezier(.2, .7, .3, 1) infinite; }
+.ct-pin b { position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--navy); opacity: 0; animation: ct-pulse 2.4s cubic-bezier(.2, .7, .3, 1) 4; }
 @keyframes ct-pulse { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
 .lead-contact { background: var(--paper); }
 @media (max-width: 900px) {
@@ -639,3 +645,64 @@ html.menu-open { overflow: hidden; }
   .ft-brand { grid-column: 1 / -1; }
   .ft-grid > nav { grid-column: 1 / -1; }
 }
+
+/* ---------- Accessibility ---------- */
+/* Keep a focused element clear of the fixed menu button when the page scrolls to it. */
+html { scroll-padding-top: 88px; }
+/* On the dark fields the focus ring turns yellow so it stays visible (last, so it wins). */
+[data-dark] :focus-visible, .side-menu :focus-visible, .vg-modal :focus-visible, .menu-btn.on-dark:focus-visible { outline-color: var(--yellow) !important; }
+/* Pause / resume for the parts that move by themselves (the journey tour, the ads gallery). */
+.anim-toggle { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-top: 14px; padding: 0 16px; border-radius: 999px; cursor: pointer; font: 600 15px/1 var(--font); color: var(--navy-deep); box-shadow: inset 0 0 0 1.5px #c9d1e7; }
+.anim-toggle:hover { background: #e6ebf6; }
+.anim-toggle:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+.anim-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.anim-toggle .i-play { display: none; fill: currentColor; stroke: none; }
+.anim-toggle[aria-pressed="true"] .i-pause { display: none; }
+.anim-toggle[aria-pressed="true"] .i-play { display: inline; }
+.anim-toggle[hidden] { display: none; }
+.anim-toggle-dark { color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .35); }
+.anim-toggle-dark:hover { background: rgba(255, 255, 255, .1); }
+.anim-toggle-dark:focus-visible { outline-color: var(--yellow); }
+.vg-pause { display: flex; width: fit-content; margin: 18px auto 0; }
+.ft-a11y { color: #fff; text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+.ft-a11y:hover { color: var(--yellow); }
+.adv-still { display: none; }
+
+/* Reduced motion: the page is shown at rest. Nothing moves by itself, transitions are instant,
+   and the sections that are built from motion get a still layout instead. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  .sv-key .marker, .sv-final .marker { background-size: 100% 0.32em; }
+  .vg-pause { display: none; }
+  .adv { height: auto; }
+  .adv-wide { display: none; }
+  .adv-stage { position: relative; height: 100vh; height: 100svh; min-height: 680px; }
+  .adv-still { display: block; position: absolute; left: 50%; top: 52%; width: clamp(140px, 13vw, 210px); height: auto; transform: translate(-50%, -50%) rotate(-4deg); filter: drop-shadow(0 20px 30px rgba(27, 36, 72, .25)); }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 900px) {
+  .adv-stage { height: auto; min-height: 0; }
+  .adv-slot { display: none; }
+  .adv-still { position: relative; left: auto; top: auto; margin: 36px auto 48px; width: 150px; transform: rotate(-4deg); }
+}
+
+/* ---------- Accessibility statement ---------- */
+.a11y-page { padding-block: clamp(40px, 8vh, 90px) clamp(80px, 12vh, 130px); }
+.a11y-page .about-wrap > * { grid-column: 1 / -1; }
+.a11y-doc { max-width: 46em; font-size: 18px; line-height: 1.75; color: var(--ink); }
+.a11y-title { margin: 0 0 0.6em; font-size: clamp(40px, 5vw, 72px); line-height: 1.05; letter-spacing: -0.03em; font-weight: 900; color: var(--navy-deep); }
+.a11y-doc h2 { margin: 2.2em 0 0.5em; font-size: clamp(24px, 2.2vw, 32px); line-height: 1.2; font-weight: 800; color: var(--navy-deep); }
+.a11y-doc h3 { margin: 1.6em 0 0.4em; font-size: 20px; font-weight: 800; color: var(--navy); }
+.a11y-doc p { margin: 0 0 0.9em; }
+.a11y-doc ul { margin: 0 0 1em; padding-inline-start: 1.3em; display: grid; gap: 0.35em; }
+.a11y-doc a { color: var(--navy); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.a11y-doc a:hover { color: var(--navy-deep); }
+.a11y-doc kbd { display: inline-block; padding: 1px 7px; border-radius: 6px; border: 1px solid #c9d1e7; border-bottom-width: 2px; background: var(--paper); font: 600 15px/1.5 var(--font); direction: ltr; }
+.a11y-contact { margin: 0; display: grid; gap: 10px; }
+.a11y-contact div { display: grid; grid-template-columns: 9em 1fr; gap: 12px; padding: 12px 16px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px #e3e8f4; }
+.a11y-contact dt { font-weight: 700; color: var(--navy); }
+.a11y-contact dd { margin: 0; overflow-wrap: anywhere; }
+.a11y-draft { margin-bottom: 36px; padding: 16px 20px; border-radius: 14px; background: #fff7cc; color: #4a3d00; box-shadow: inset 0 0 0 2px #e9d70b; font-size: 16px; }
+.a11y-pending { display: inline-block; margin-inline-end: 6px; padding: 0 8px; border-radius: 6px; background: #fff7cc; color: #4a3d00; box-shadow: inset 0 0 0 1px #d9c400; font-size: 14px; font-weight: 700; line-height: 1.7; }
+.a11y-todo { color: var(--navy-soft); }
+@media (max-width: 600px) { .a11y-contact div { grid-template-columns: 1fr; gap: 2px; } }
