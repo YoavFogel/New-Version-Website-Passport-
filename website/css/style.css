@@ -335,15 +335,20 @@ h1, p, figure { margin: 0; }
 /* The face it turns to: the answer. */
 .qa-back { background: var(--paper); color: var(--ink); box-shadow: 0 18px 40px rgba(27, 36, 72, .14); }
 .qa-back .qa-num { color: var(--navy); }
-.qa-a { font-size: clamp(17px, 1.3vw, 19px); line-height: 1.6; text-wrap: pretty; }
+.qa-a { display: grid; gap: 0.85em; font-size: clamp(16px, 1.2vw, 18px); line-height: 1.65; text-wrap: pretty; }
+.qa-p { display: block; }
+.qa-a strong { font-weight: 800; color: var(--navy-deep); }
 
 /* The wheel. */
 .faq.is-wheel .qa-wheel { display: block; position: relative; max-width: none; padding: 0; height: calc(var(--ch) + 110px); touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
 .faq.is-wheel .qa-wheel.is-dragging { cursor: grabbing; }
-.faq.is-wheel .qa { position: absolute; left: 50%; top: 20px; width: var(--cw); height: var(--ch); margin-left: calc(var(--cw) / -2); transform-origin: 50% 50%; will-change: transform, opacity; }
+.faq.is-wheel .qa { position: absolute; left: 50%; top: 20px; width: var(--cw); height: var(--ch); margin-left: calc(var(--cw) / -2); transform-origin: 50% 50%; will-change: transform, opacity; transition: width 700ms cubic-bezier(.2, .8, .2, 1), height 700ms cubic-bezier(.2, .8, .2, 1), margin-left 700ms cubic-bezier(.2, .8, .2, 1), filter 500ms; }
+/* The card that is turned over grows to hold its answer; the others step back. */
+.faq.is-wheel .qa-wheel { transition: height 700ms cubic-bezier(.2, .8, .2, 1); }
+.faq.is-wheel .qa-wheel.has-flipped .qa:not(.is-flipped) { filter: brightness(.82); }
 .faq.is-wheel .qa-card, .faq.is-wheel .qa-inner { height: 100%; }
 .faq.is-wheel .qa-inner { grid-template-rows: 100%; }
-.faq.is-wheel .qa-back { transform: rotateY(180deg); overflow: auto; }
+.faq.is-wheel .qa-back { transform: rotateY(180deg); }
 .faq.is-wheel .qa.is-flipped .qa-inner { transform: rotateY(180deg); }
 .faq.is-wheel .qa:not(.is-active) .qa-card { cursor: inherit; }
 .faq.is-wheel .qa:not(.is-active) .qa-hint { opacity: 0; }
@@ -368,7 +373,7 @@ h1, p, figure { margin: 0; }
   .faq-stage { --cw: min(74vw, 300px); --ch: min(94vw, 370px); }
   .qa-face { padding: 26px 22px; gap: 14px; }
   .qa-q { font-size: 24px; }
-  .qa-a { font-size: 17px; }
+  .qa-a { font-size: 16.5px; }
   .faq.is-wheel .qa-wheel { height: calc(var(--ch) + 70px); }
 }
 

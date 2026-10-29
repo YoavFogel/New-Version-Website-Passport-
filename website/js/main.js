@@ -684,9 +684,33 @@ if (ready) {
       if (now) now.textContent = String(i + 1).padStart(2, '0');
     }
 
+    // The card that is turned over grows (wider and taller) to hold its whole answer, so no
+    // answer is ever cut off or scrolled inside the card. Heights are measured, not guessed.
+    let base = { w: 300, h: 400 };
+    let pad = 110;
+    let refresh = 0;
+    function resize(it, on) {
+      let w = base.w, h = base.h;
+      if (on) {
+        w = window.innerWidth <= 900 ? Math.min(window.innerWidth - 32, 420) : 560;
+        const keep = [it.style.width, it.style.height, it.style.marginLeft, it.style.transition];
+        it.style.transition = 'none';
+        it.style.width = `${w}px`; it.style.height = 'auto'; it.style.marginLeft = `${-w / 2}px`;
+        h = Math.max(base.h, it.offsetHeight);
+        [it.style.width, it.style.height, it.style.marginLeft] = keep;
+        void it.offsetHeight;
+        it.style.transition = keep[3];
+      }
+      it.style.width = `${w}px`; it.style.height = `${h}px`; it.style.marginLeft = `${-w / 2}px`;
+      wheel.style.height = `${h + pad}px`;
+      clearTimeout(refresh);
+      refresh = setTimeout(() => ScrollTrigger.refresh(), 800);
+    }
     function flip(it, on) {
       it.classList.toggle('is-flipped', on);
       it.querySelector('.qa-card').setAttribute('aria-expanded', String(on));
+      wheel.classList.toggle('has-flipped', items.some((x) => x.classList.contains('is-flipped')));
+      resize(it, on);
     }
 
     // Turn the wheel to card i by the short way round.
@@ -756,7 +780,17 @@ if (ready) {
 
     api.build = () => {
       const phone = window.innerWidth <= 900;
+      // Every card starts turned to its question, at the size the stylesheet gives it.
+      items.forEach((it) => {
+        it.classList.remove('is-flipped');
+        it.querySelector('.qa-card').setAttribute('aria-expanded', 'false');
+        it.style.width = it.style.height = it.style.marginLeft = '';
+      });
+      wheel.style.height = '';
+      wheel.classList.remove('has-flipped');
       const cw = items[0].offsetWidth;
+      base = { w: cw, h: items[0].offsetHeight };
+      pad = phone ? 70 : 110;
       // Neighbours stand a card's width (plus a gap) to the side.
       const step = phone ? 12 : 16;
       const px = cw * (phone ? 1.06 : 1.1);
