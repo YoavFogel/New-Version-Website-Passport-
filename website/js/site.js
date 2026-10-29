@@ -3,7 +3,7 @@
 (() => {
   const cfg = window.EUP_CONFIG || {};
   const hasGsap = !!window.gsap;
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = window.EUP_MOTION ? window.EUP_MOTION.still : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lenis = () => window.__lenis || null;
 
   // ---------- Enable accessibility widget ----------
@@ -15,6 +15,13 @@
     s.async = true;
     document.head.append(s);
   }
+
+  // ---------- The animations switch ----------
+  document.querySelectorAll('[data-motion-switch]').forEach((sw) => {
+    const on = !(window.EUP_MOTION && window.EUP_MOTION.still);
+    sw.setAttribute('aria-checked', String(on));
+    sw.addEventListener('click', () => window.EUP_MOTION?.set(!on));
+  });
 
   // ---------- WhatsApp links, from one setting ----------
   const wa = (text) => `https://wa.me/${cfg.whatsapp}?text=${encodeURIComponent(text || cfg.whatsappText || '')}`;

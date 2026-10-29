@@ -23,7 +23,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-@media (prefers-reduced-motion: no-preference) { html:not(.lenis) { scroll-behavior: smooth; } }
+html:not(.lenis):not(.is-still) { scroll-behavior: smooth; }
 body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font); font-size: 18px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
 img { display: block; max-width: 100%; }
 h1, p, figure { margin: 0; }
@@ -668,23 +668,30 @@ html { scroll-padding-top: 88px; }
 .ft-a11y:hover { color: var(--yellow); }
 .adv-still { display: none; }
 
-/* Reduced motion: the page is shown at rest. Nothing moves by itself, transitions are instant,
-   and the sections that are built from motion get a still layout instead. */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
-  .sv-key .marker, .sv-final .marker { background-size: 100% 0.32em; }
-  .vg-pause { display: none; }
-  .adv { height: auto; }
-  .adv-wide { display: none; }
-  .adv-stage { position: relative; height: 100vh; height: 100svh; min-height: 680px; }
-  .adv-still { display: block; position: absolute; left: 50%; top: 52%; width: clamp(140px, 13vw, 210px); height: auto; transform: translate(-50%, -50%) rotate(-4deg); filter: drop-shadow(0 20px 30px rgba(27, 36, 72, .25)); }
+/* At rest (html.is-still: the device asks for reduced motion, or the visitor turned animations
+   off): nothing moves by itself, transitions are instant, and the sections that are built from
+   motion get a still layout instead. */
+html.is-still { scroll-behavior: auto; }
+.is-still *, .is-still *::before, .is-still *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+.is-still .sv-key .marker, .is-still .sv-final .marker { background-size: 100% 0.32em; }
+.is-still .vg-pause { display: none; }
+.is-still .adv { height: auto; }
+.is-still .adv-wide { display: none; }
+.is-still .adv-stage { position: relative; height: 100vh; height: 100svh; min-height: 680px; }
+.is-still .adv-still { display: block; position: absolute; left: 50%; top: 52%; width: clamp(140px, 13vw, 210px); height: auto; transform: translate(-50%, -50%) rotate(-4deg); filter: drop-shadow(0 20px 30px rgba(27, 36, 72, .25)); }
+@media (max-width: 900px) {
+  .is-still .adv-stage { height: auto; min-height: 0; }
+  .is-still .adv-slot { display: none; }
+  .is-still .adv-still { position: relative; left: auto; top: auto; margin: 36px auto 48px; width: 150px; transform: rotate(-4deg); }
 }
-@media (prefers-reduced-motion: reduce) and (max-width: 900px) {
-  .adv-stage { height: auto; min-height: 0; }
-  .adv-slot { display: none; }
-  .adv-still { position: relative; left: auto; top: auto; margin: 36px auto 48px; width: 150px; transform: rotate(-4deg); }
-}
+
+/* The "אנימציות" switch (side menu and footer). */
+.motion-switch { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; font: 600 15px/1 var(--font); color: #fff; }
+.motion-switch .ms-track { position: relative; width: 40px; height: 22px; border-radius: 999px; background: rgba(255, 255, 255, .25); transition: background-color 200ms; }
+.motion-switch .ms-track::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 200ms; }
+.motion-switch[aria-checked="true"] .ms-track { background: var(--yellow); }
+.motion-switch[aria-checked="true"] .ms-track::after { transform: translateX(-18px); background: var(--navy-deep); }
+.motion-switch:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; border-radius: 6px; }
 
 /* ---------- Accessibility statement ---------- */
 .a11y-page { padding-block: clamp(40px, 8vh, 90px) clamp(80px, 12vh, 130px); }

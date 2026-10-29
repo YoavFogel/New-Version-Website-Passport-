@@ -3,10 +3,11 @@
 // so scrolling back up plays the same path in reverse (except in the journey section, where it
 // runs on its own clock; see below). At the very top the passport docks
 // back into the photo itself, so it sits exactly where it is in the original picture.
-// When the visitor asks the system to reduce motion, the site is shown at rest instead
+// When the device asks to reduce motion (or the visitor turns animations off with the
+// switch, see js/motion.js), the site is shown at rest instead
 // ("still" below): the passport stays in the photo, every text and picture is in its final
 // place, nothing moves on its own, and the browser's own scrolling is used.
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduceMotion = window.EUP_MOTION ? window.EUP_MOTION.still : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const still = reduceMotion;
 const ready = !!(window.gsap && window.ScrollTrigger);
 
