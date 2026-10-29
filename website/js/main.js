@@ -886,8 +886,13 @@ if (ready) {
     row.addEventListener('pointercancel', release);
 
     // The player. Drive files play in Drive's own player; a file in assets/video plays natively.
+    // Only a Drive file ID or a video in this site's own assets/video folder is accepted.
+    const DRIVE_ID = /^[A-Za-z0-9_-]{10,}$/;
+    const LOCAL = /^assets\/video\/[\w.-]+\.(mp4|webm)$/;
     function play(it) {
       frame.textContent = '';
+      if (it.dataset.src && !LOCAL.test(it.dataset.src)) return;
+      if (!it.dataset.src && !DRIVE_ID.test(it.dataset.drive || '')) return;
       if (it.dataset.src) {
         const v = document.createElement('video');
         v.src = it.dataset.src;
@@ -921,7 +926,8 @@ if (ready) {
 
     // Posters load once the gallery is close to the screen.
     const loadPosters = () => items.forEach((it) => {
-      const src = it.dataset.poster || (it.dataset.drive && `https://drive.google.com/thumbnail?id=${it.dataset.drive}&sz=w800`);
+      const poster = it.dataset.poster && /^assets\/video\/[\w.-]+\.(jpe?g|png|webp)$/.test(it.dataset.poster) ? it.dataset.poster : '';
+      const src = poster || (/^[A-Za-z0-9_-]{10,}$/.test(it.dataset.drive || '') && `https://drive.google.com/thumbnail?id=${it.dataset.drive}&sz=w800`);
       if (src) it.querySelector('.vg-poster').style.setProperty('--poster', `url("${src}")`);
     });
 

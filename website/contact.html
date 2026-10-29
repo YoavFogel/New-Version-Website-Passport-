@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Security policy: scripts only from this site; frames only Drive and Google Maps. The
+       lead endpoint is reached over https (connect-src). Repeat as an HTTP header on the host,
+       together with frame-ancestors, which a meta tag cannot set. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://drive.google.com https://*.googleusercontent.com https://*.gstatic.com https://maps.google.com https://*.google.com; font-src 'self'; media-src 'self'; frame-src https://drive.google.com https://maps.google.com https://www.google.com; connect-src 'self' https:; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>צור קשר | אי.יו פספורט</title>
   <meta name="description" content="משרד אי.יו פספורט: בית דוד, קומה 5, זאב ז׳בוטינסקי 138, רמת גן. טלפון 074-7444000.">
   <meta name="theme-color" content="#f4f6fb">

@@ -1,1 +1,5 @@
 .taste-skill/
+__pycache__/
+*.pyc
+.env
+.env.*
