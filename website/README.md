@@ -20,7 +20,7 @@ Stacked, they reproduce the original.
 When a section gets its content, change its `data-passport` so the passport rests where
 there is no text.
 
-## Video gallery ("הסרטונים שלנו")
+## Video gallery ("הפרסומות שלנו")
 
 Each video is one `<li class="vg-item">` inside `<ul class="vg-track">` in `index.html`.
 The number of cards, the counter and the order all follow the list; nothing else needs editing.
@@ -34,7 +34,7 @@ There are two ways to give a card its video:
 3. Add a card:
    ```html
    <li class="vg-item" data-drive="<ID>" data-title="שם הסרטון">
-     ...copy the <button> of an existing card and change the title and the number...
+     ...copy the <button> of an existing card and change its number and its aria-label...
    </li>
    ```
    The poster is taken from Drive's thumbnail automatically.
@@ -50,6 +50,8 @@ There are two ways to give a card its video:
    compress them first, or keep them on Drive.
 
 To replace a video, change its `data-drive` (or `data-src` / `data-poster`) and `data-title`.
+The card shows only its number (01, 02…); the name stays in `data-title` and in the
+button's `aria-label`, for screen readers and the player's title.
 To remove one, delete its `<li>`. Videos load only when a visitor presses play, so adding
 cards does not slow the page down.
 
