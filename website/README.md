@@ -68,16 +68,3 @@ cards does not slow the page down.
 - `index.html`: the home page, with its sections in order: about, journey, services,
   questions, videos, lead form, then the footer.
 - `contact.html`: contact details, the map, navigation buttons and the same lead form.
-
-## Accessibility
-
-- Statement page: `accessibility/index.html` (URL `/accessibility/`), linked from every footer.
-  It is a draft: items marked "ממתין לאימות" must be confirmed or removed before publishing,
-  and the draft notice at the top removed then.
-- Enable widget: set `enableScript` in `js/config.js` to the installation script address from
-  the office's Enable account. It loads on every page that includes `js/site.js`.
-- Reduced motion (`prefers-reduced-motion: reduce`): the site is shown at rest (see `still` in
-  `js/main.js` and the reduced-motion block at the end of `css/style.css`). Keep new motion
-  behind the same switch.
-- The journey tour and the ads gallery move by themselves, so each has a pause button.
-- Report of the review: `docs/accessibility-report-2026-10.md`.
