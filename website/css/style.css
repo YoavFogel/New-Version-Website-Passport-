@@ -567,7 +567,7 @@ html.menu-open { overflow: hidden; }
 .adv-head { position: absolute; top: max(28px, 6vh); left: 0; right: 0; text-align: center; z-index: 2; }
 .adv-head .sv-num { justify-content: center; margin-bottom: 10px; }
 .adv-title { margin: 0; font-size: clamp(34px, 3.8vw, 64px); line-height: 1.02; letter-spacing: -0.03em; font-weight: 900; color: var(--navy-deep); }
-.adv-sub { position: absolute; left: 50%; bottom: max(24px, 5vh); transform: translateX(-50%); margin: 0; width: max-content; max-width: 26vw; text-align: center; font-size: clamp(16px, 1.3vw, 20px); font-weight: 500; color: var(--navy); text-wrap: balance; }
+.adv-sub { position: absolute; left: 50%; bottom: max(20px, 4vh); transform: translateX(-50%); margin: 0; width: max-content; max-width: 26vw; text-align: center; font-size: clamp(16px, 1.3vw, 20px); font-weight: 500; color: var(--navy); text-wrap: balance; }
 .adv-stamps { margin: 0; padding: 0; list-style: none; }
 .stamp { --w: clamp(146px, 13.5vw, 200px); --ink: var(--navy); position: absolute; left: calc(50% + var(--x) * 1vw); top: calc(52% + var(--y) * 1vh); width: var(--w); margin-left: calc(var(--w) / -2); transform: translateY(-50%); display: grid; justify-items: center; gap: 10px; text-align: center; }
 .stamp.is-wine { --ink: #7d1a33; }
