@@ -237,7 +237,7 @@
         status.append('הטופס עדיין לא מחובר למערכת קבלת הפניות, ולכן הפרטים לא נשלחו. אפשר לפנות אלינו ');
         const a = document.createElement('a');
         a.href = wa(`שלום, אני ${data.name}. טלפון: ${data.phone}. אימייל: ${data.email}. מי במשפחה הגיע מרומניה: ${data.relation}`);
-        a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'בוואטסאפ';
+        a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ב-WhatsApp';
         status.append(a, ' או בטלפון 074-7444000.');
         console.warn('EU Passport: set leadEndpoint in js/config.js to deliver leads.');
         return;

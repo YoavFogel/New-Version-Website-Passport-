@@ -986,7 +986,7 @@ if (ready) {
   // ---------- What a Romanian passport gives you: stamps ----------
   // Each advantage is stamped next to the passport: it drops from above, larger and turned,
   // hits the page (the ink ring spreads out) and settles at its own small angle. On a desktop
-  // the eight hits share the sticky stage's scroll; on a phone each stamp lands as it arrives.
+  // the nine hits share the sticky stage's scroll; on a phone each stamp lands as it arrives.
   function advantages() {
     const sec = document.getElementById('advantages');
     if (!sec) return;

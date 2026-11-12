@@ -540,7 +540,6 @@ html.menu-open { overflow: hidden; }
 .ct-link b { font-size: 19px; overflow-wrap: anywhere; text-align: right; }
 .ct-ico { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: #e6ebf6; color: var(--navy); }
 .ct-ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.ct-wa .ct-ico { background: #25d366; color: #fff; }
 .ct-map { position: relative; margin: 0; min-height: 420px; border-radius: 26px; overflow: hidden; background: #dfe4f1; box-shadow: 0 0 0 1px #e3e8f4, 0 30px 60px rgba(27, 36, 72, .10); }
 .ct-map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; filter: saturate(.75) contrast(1.02); }
 .ct-pin { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
@@ -643,4 +642,14 @@ html.menu-open { overflow: hidden; }
   .ft-list a { overflow-wrap: normal; }
   .ft-brand { grid-column: 1 / -1; }
   .ft-grid > nav { grid-column: 1 / -1; }
+}
+
+/* WhatsApp: the official glyph, without its green badge, in the site's own colours. */
+svg.wa-logo { fill: currentColor; stroke: none; }
+.wa-inline { display: inline-flex; align-items: center; gap: .4em; }
+.wa-inline svg.wa-logo { width: 1em; height: 1em; flex: none; }
+
+/* Ninth advantage: under the passport on desktop; alone and centred on a phone. */
+@media (max-width: 900px) {
+  .adv-stamps .stamp.is-last { grid-column: 1 / -1; justify-self: center; width: min(62%, 240px); transform: translateY(26px); }
 }
