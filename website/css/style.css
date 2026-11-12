@@ -649,6 +649,10 @@ svg.wa-logo { fill: currentColor; stroke: none; }
 .wa-inline { display: inline-flex; align-items: center; gap: .4em; }
 .wa-inline svg.wa-logo { width: 1em; height: 1em; flex: none; }
 
+/* Phone and envelope icons next to the matching contact links (side menu, footer). */
+.ico-link { display: inline-flex; align-items: center; gap: .4em; }
+.ico-inline { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 /* Ninth advantage: under the passport on desktop; alone and centred on a phone. */
 @media (max-width: 900px) {
   .adv-stamps .stamp.is-last { grid-column: 1 / -1; justify-self: center; width: min(62%, 240px); transform: translateY(26px); }
