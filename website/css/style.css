@@ -653,3 +653,20 @@ svg.wa-logo { fill: currentColor; stroke: none; }
 @media (max-width: 900px) {
   .adv-stamps .stamp.is-last { grid-column: 1 / -1; justify-self: center; width: min(62%, 240px); transform: translateY(26px); }
 }
+
+/* Legal pages (accessibility statement, terms): one readable column of prose. */
+.lg-body { padding-block: 0 clamp(60px, 10vh, 120px); }
+.lg-col { grid-column: 1 / -1; max-width: 62em; }
+@media (min-width: 901px) { .lg-col { grid-column: 2 / 12; } }
+.lg-col h2 { margin: 2.2em 0 0.6em; font-size: clamp(22px, 2vw, 28px); font-weight: 800; letter-spacing: -0.01em; color: var(--navy-deep); }
+.lg-col h2:first-child { margin-top: 0; }
+.lg-col p { margin: 0 0 1em; font-size: clamp(16px, 1.1vw, 18px); line-height: 1.7; color: var(--navy); text-wrap: pretty; }
+.lg-col ul { margin: 0 0 1em; padding-inline-start: 1.4em; display: grid; gap: 0.45em; font-size: clamp(16px, 1.1vw, 18px); line-height: 1.6; color: var(--navy); }
+.lg-col a { color: var(--navy-deep); text-decoration-color: #b9c1dc; text-underline-offset: 3px; }
+.lg-col a:hover, .lg-col a:focus-visible { text-decoration-color: currentColor; }
+.lg-contact { margin: 0 0 1.4em; padding: 20px 24px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px #e3e8f4; display: grid; gap: 12px; }
+.lg-contact > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.lg-contact dt { font-weight: 700; color: var(--navy-deep); }
+.lg-contact dt::after { content: ":"; }
+.lg-contact dd { margin: 0; color: var(--navy); }
+.lg-updated { margin-top: 2em; padding-top: 1.2em; border-top: 1px solid #dde2f0; font-size: 14px; color: var(--navy-soft); }
